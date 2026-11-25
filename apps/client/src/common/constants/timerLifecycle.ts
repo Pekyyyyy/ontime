@@ -10,6 +10,8 @@ export const lifecycleLabels: Record<TimerLifeCycle, string> = {
   [TimerLifeCycle.onFinish]: 'On Finish',
   [TimerLifeCycle.onWarning]: 'On Warning',
   [TimerLifeCycle.onDanger]: 'On Danger',
+  [TimerLifeCycle.onCueGo]: 'On Cue GO',
+  [TimerLifeCycle.onCuePanic]: 'On Cue Panic',
 };
 
 export function getLifecycleLabel(cycle: TimerLifeCycle | string): string {

@@ -8,6 +8,10 @@ export enum TimerLifeCycle {
   onFinish = 'onFinish',
   onWarning = 'onWarning',
   onDanger = 'onDanger',
+  /** a timeline cue had its GO, or a test */
+  onCueGo = 'onCueGo',
+  /** a panic stopped the running cues */
+  onCuePanic = 'onCuePanic',
 }
 
 export type TimerLifeCycleKey = keyof typeof TimerLifeCycle;

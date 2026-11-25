@@ -69,9 +69,16 @@ export function resolveTimelineCues(cues: Readonly<RundownCues>, spans: Timeline
     }
 
     visiting.add(cueId);
-    const start = resolveStart(cue.start);
-    const end = start === null ? null : resolveEnd(cue.end, start);
+    let start = resolveStart(cue.start);
+    let end = start === null ? null : resolveEnd(cue.end, start);
     visiting.delete(cueId);
+
+    // a cue which starts an event is planned against its GO
+    const pinned = start !== null && end !== null ? getPinnedCueTimes(cue, end - start, spanMap) : null;
+    if (pinned) {
+      start = pinned.start;
+      end = pinned.end;
+    }
 
     if (start === null || end === null) {
       failed.add(cueId);
@@ -119,6 +126,27 @@ export function resolveTimelineCues(cues: Readonly<RundownCues>, spans: Timeline
   }
 
   return resolved;
+}
+
+/**
+ * Where a cue which gives an event its GO sits, given its length
+ * - auto-follow: it ends the wait before the GO
+ * - auto-continue: it starts the wait before the GO
+ * @returns null for cues which do not start an event, or start from another cue
+ */
+export function getPinnedCueTimes(
+  cue: TimelineCue,
+  length: number,
+  spans: Map<EntryId, TimelineEventSpan> | TimelineEventSpan[],
+): { start: number; end: number } | null {
+  const target = cue.nextEvent?.eventId;
+  if (!target || cue.start.trigger === 'auto-follow' || cue.start.trigger === 'auto-continue') return null;
+  const span = Array.isArray(spans) ? spans.find((candidate) => candidate.id === target) : spans.get(target);
+  if (!span) return null;
+  const safeLength = Math.max(0, length);
+  const go = span.start - (cue.nextEvent?.offset ?? 0);
+  if (cue.nextEvent?.trigger === 'auto-follow') return { start: go - safeLength, end: go };
+  return { start: go, end: go + safeLength };
 }
 
 /**
@@ -313,7 +341,14 @@ export function sanitiseTimelineCues(
     }
 
     if (!start || !end) continue;
-    result[cueId] = { ...cue, start, end };
+
+    // a cue which started a deleted event stays where it was drawn
+    let nextEvent = cue.nextEvent;
+    if (nextEvent?.eventId && !eventIds.has(nextEvent.eventId)) {
+      nextEvent = { trigger: nextEvent.trigger, offset: nextEvent.offset };
+      start = (previousTimes ? anchorToEvent(previousTimes.start, options) : null) ?? start;
+    }
+    result[cueId] = { ...cue, start, end, ...(cue.nextEvent !== undefined && { nextEvent }) };
   }
 
   // break loops, which a client could only send by mistake

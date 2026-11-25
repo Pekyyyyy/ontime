@@ -1,4 +1,13 @@
-import { CuePlayback, LogOrigin, Playback, Rundown, RundownCues, TimelineCueId, isOntimeEvent } from 'ontime-types';
+import {
+  CuePlayback,
+  LogOrigin,
+  Playback,
+  Rundown,
+  RundownCues,
+  TimelineCueId,
+  TimerLifeCycle,
+  isOntimeEvent,
+} from 'ontime-types';
 import {
   type CueSchedule,
   type ResolvedTimelineCues,
@@ -7,6 +16,7 @@ import {
   fireCueEntry,
   getCueSchedule,
   getDueCues,
+  getEventAtTime,
   getEventGoCues,
   getNextCue,
   getNextCueInEvent,
@@ -17,8 +27,9 @@ import {
   settleCuePlayback,
 } from 'ontime-utils';
 
+import { type CueAutomationData, triggerCueAutomations } from '../../api-data/automation/automation.service.js';
 import * as logger from '../../api-data/logs/logs.service.js';
-import { getCurrentRundown } from '../../api-data/rundown/rundown.dao.js';
+import { getCurrentRundown, getProjectCustomFields } from '../../api-data/rundown/rundown.dao.js';
 import * as timeCore from '../../lib/time-core/timeCore.js';
 import { eventStore } from '../../stores/EventStore.js';
 import { getState } from '../../stores/runtimeState.js';
@@ -40,6 +51,10 @@ type CueServiceDeps = {
   log: (message: string, cueLabel: string) => void;
   /** gives the next event its GO, for cues which move the show on */
   startNextEvent: () => void;
+  /** a cue had its GO or a test, eg: to run its automations */
+  onCueFired?: (cueId: TimelineCueId, status: 'running' | 'test') => void;
+  /** a panic stopped the running cues */
+  onPanic?: () => void;
 };
 
 /** a GO of the next event which a cue asked for */
@@ -54,7 +69,15 @@ export class CueCommandError extends Error {}
  * - manual cues wait for a GO, a cue which ran needs a rearm to run again
  * - tests run a cue without its chain and without marking it as played
  */
-export function createCueService({ getRundown, getRuntime, emit, log, startNextEvent }: CueServiceDeps) {
+export function createCueService({
+  getRundown,
+  getRuntime,
+  emit,
+  log,
+  startNextEvent,
+  onCueFired,
+  onPanic,
+}: CueServiceDeps) {
   let state: CuePlayback = { rundownId: null, cues: {} };
   let cache: {
     id: string;
@@ -111,6 +134,7 @@ export function createCueService({ getRundown, getRuntime, emit, log, startNextE
     const entry = fireCueEntry(cueId, schedule, runtime.now, status);
     state = { ...state, cues: { ...state.cues, [cueId]: entry } };
     log(status === 'test' ? 'Cue test' : 'Cue GO', cue.label);
+    onCueFired?.(cueId, status);
 
     // a test does not move the show on
     if (status === 'running' && cue.nextEvent && runtime.eventNowId) {
@@ -244,6 +268,7 @@ export function createCueService({ getRundown, getRuntime, emit, log, startNextE
       state = { ...state, cues: stopped };
       log('Cue panic', 'all running cues');
     }
+    onPanic?.();
     flush();
   }
 
@@ -284,7 +309,35 @@ export const cueService = createCueService({
   emit: (playback) => eventStore.set('cuePlayback', playback),
   log: (message, cueLabel) => logger.info(LogOrigin.Playback, message, { cue: cueLabel }),
   startNextEvent: () => runtimeService.startNext(),
+  onCueFired: (cueId, status) => {
+    const data = getCueAutomationData(cueId, status);
+    if (data) triggerCueAutomations(TimerLifeCycle.onCueGo, data);
+  },
+  onPanic: () => triggerCueAutomations(TimerLifeCycle.onCuePanic),
 });
+
+/**
+ * What an automation can read about a cue: its own fields and the event it plays in
+ */
+function getCueAutomationData(cueId: TimelineCueId, status: 'running' | 'test'): CueAutomationData | null {
+  const rundown = getCurrentRundown();
+  const cue = rundown.cues?.[cueId];
+  if (!cue) return null;
+  const spans = getTimelineEventSpans(rundown);
+  const times = resolveTimelineCues(rundown.cues ?? {}, spans)[cueId];
+  const span = times ? getEventAtTime(spans, times.start) : null;
+  const entry = span ? rundown.entries[span.id] : undefined;
+  const event = entry && isOntimeEvent(entry) ? entry : null;
+  return {
+    id: cue.id,
+    label: cue.label,
+    note: cue.note,
+    track: cue.track,
+    trackLabel: getProjectCustomFields()[cue.track]?.label ?? cue.track,
+    status: status === 'test' ? 'test' : 'go',
+    event: event ? { id: event.id, cue: event.cue, title: event.title, custom: { ...event.custom } } : null,
+  };
+}
 
 let interval: NodeJS.Timeout | null = null;
 

@@ -42,6 +42,7 @@ import {
   snapToGrid,
 } from './cueTimeline.utils';
 import { useCueLive } from './useCueLive';
+import { useCueSelection } from './useCueSelection';
 import { useTimelineCueActions } from './useTimelineCueActions';
 
 import style from './CueTimeline.module.scss';
@@ -95,10 +96,18 @@ interface CueTimelineProps {
   onOrientationChange?: (orientation: TimelineOrientation) => void;
   /** edit mode edits and tests cues, run mode plays them */
   mode: AppMode;
+  /** the timeline can leave the editing of the selected cue to a panel outside of it */
+  showInspector?: boolean;
   className?: string;
 }
 
-export default function CueTimeline({ orientation, onOrientationChange, mode, className }: CueTimelineProps) {
+export default function CueTimeline({
+  orientation,
+  onOrientationChange,
+  mode,
+  showInspector = true,
+  className,
+}: CueTimelineProps) {
   const isRunMode = mode === AppMode.Run;
   const readOnly = isRunMode;
   const { data: rundown } = useRundown();
@@ -111,7 +120,8 @@ export default function CueTimeline({ orientation, onOrientationChange, mode, cl
 
   /** pixels per minute */
   const [zoom, setZoom] = useState(orientation === 'horizontal' ? 8 : 4);
-  const [selectedCueId, setSelectedCueId] = useState<TimelineCueId | null>(null);
+  const selectedCueId = useCueSelection((state) => state.selectedCueId);
+  const setSelectedCueId = useCueSelection((state) => state.setSelectedCueId);
   const [drag, setDrag] = useState<DragState | null>(null);
 
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -269,6 +279,11 @@ export default function CueTimeline({ orientation, onOrientationChange, mode, cl
 
     if (!current.moved) {
       if (current.target === 'cue') setSelectedCueId(current.id);
+      if (current.target === 'event') {
+        // a click on an event edits it, in place of the cue
+        setSingleEntrySelection({ id: current.id });
+        setSelectedCueId(null);
+      }
       return;
     }
 
@@ -374,6 +389,18 @@ export default function CueTimeline({ orientation, onOrientationChange, mode, cl
     const cross = crossOffset + eventLane + rowIndex * row;
     return { cue, main, mainSize, cross, isOneShot };
   };
+
+  // cues which start an event are drawn with their wait up to its GO
+  const eventLinks: { key: string; from: number; to: number; cross: number }[] = [];
+  for (const cueId in displayedCues) {
+    const nextEvent = displayedCues[cueId].nextEvent;
+    const span = nextEvent?.eventId ? model.spans.find((candidate) => candidate.id === nextEvent.eventId) : undefined;
+    const box = span ? getCueBox(cueId) : null;
+    if (!nextEvent || !span || !box) continue;
+    const isFromEnd = nextEvent.trigger === 'auto-follow' && !box.isOneShot;
+    const from = isFromEnd ? box.main + box.mainSize : box.main;
+    eventLinks.push({ key: cueId, from, to: toMain(span.start), cross: box.cross + row / 2 });
+  }
 
   const links: { key: string; path: string; kind: 'follow' | 'continue' }[] = [];
   for (const cueId in displayedCues) {
@@ -565,6 +592,7 @@ export default function CueTimeline({ orientation, onOrientationChange, mode, cl
                     onDoubleClick={(e) => {
                       e.stopPropagation();
                       setSingleEntrySelection({ id: span.id });
+                      setSelectedCueId(null);
                     }}
                   >
                     <span className={style.eventLabel}>
@@ -684,6 +712,20 @@ export default function CueTimeline({ orientation, onOrientationChange, mode, cl
                 );
               })}
 
+              {/* the wait between a cue and the GO of the event it starts */}
+              {eventLinks.map((link) => (
+                <div
+                  key={`event-link-${link.key}`}
+                  className={style.eventLink}
+                  style={place(
+                    Math.min(link.from, link.to),
+                    Math.max(2, Math.abs(link.to - link.from)),
+                    link.cross - 1,
+                    2,
+                  )}
+                />
+              ))}
+
               {/* where the show is on the plan */}
               {live.planPosition !== null && (
                 <div
@@ -759,7 +801,7 @@ export default function CueTimeline({ orientation, onOrientationChange, mode, cl
             </div>
           )}
         </div>
-        {selectedCue && !readOnly && cues[selectedCue.id] && (
+        {showInspector && selectedCue && !readOnly && cues[selectedCue.id] && (
           <CueInspector
             key={selectedCue.id}
             cue={selectedCue}

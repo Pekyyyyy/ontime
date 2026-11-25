@@ -234,3 +234,22 @@ describe('sanitiseTimelineCues() with one-shot cues', () => {
     });
   });
 });
+
+describe('cues which start an event', () => {
+  it('end the wait before its GO when the event follows them', () => {
+    const cues = toCues(makeCue({ id: 'a', nextEvent: { trigger: 'auto-follow', offset: 10, eventId: 'e3' } }));
+    expect(resolveTimelineCues(cues, spans).a).toEqual({ start: 240, end: 290 });
+  });
+
+  it('start the wait before its GO when the event continues with them', () => {
+    const cues = toCues(makeCue({ id: 'a', nextEvent: { trigger: 'auto-continue', offset: 10, eventId: 'e3' } }));
+    expect(resolveTimelineCues(cues, spans).a).toEqual({ start: 290, end: 340 });
+  });
+
+  it('stay in place when the event they start is deleted', () => {
+    const cues = toCues(makeCue({ id: 'a', nextEvent: { trigger: 'auto-follow', offset: 0, eventId: 'gone' } }));
+    const result = sanitiseTimelineCues(cues, spans, customFields, { a: { start: 150, end: 200 } });
+    expect(result.a.nextEvent).toEqual({ trigger: 'auto-follow', offset: 0 });
+    expect(result.a.start).toEqual({ trigger: 'inside-event', eventId: 'e2', offset: 50 });
+  });
+});

@@ -55,3 +55,8 @@
   min-width: calc(15 * 2rem + 13 * 0.5rem);
   width: 0;
 }
+
+.cueView {
+  flex: 1;
+  min-height: 0;
+}

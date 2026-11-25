@@ -33,6 +33,7 @@ export const validateTrigger = [
   body('title').isString().trim().notEmpty(),
   body('trigger').isIn(timerLifecycleValues),
   body('automationId').isString().trim().notEmpty(),
+  body('cueTrack').optional().isString().trim(),
 
   requestValidationFunction,
 ];
@@ -42,6 +43,7 @@ export const validateTriggerPatch = [
   body('title').optional().isString().trim().notEmpty(),
   body('trigger').optional().isIn(timerLifecycleValues),
   body('automationId').optional().isString().trim().notEmpty(),
+  body('cueTrack').optional().isString().trim(),
 
   requestValidationFunction,
 ];

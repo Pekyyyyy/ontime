@@ -5,7 +5,7 @@ import { RuntimeState } from '../../../stores/runtimeState.js';
 import * as logger from '../../logs/logs.service.js';
 import { makeOntimeEvent } from '../../rundown/__mocks__/rundown.mocks.js';
 import { addAutomation, addTrigger, deleteAllTriggers } from '../automation.dao.js';
-import { testConditions, testOutput, triggerAutomations } from '../automation.service.js';
+import { testConditions, testOutput, triggerAutomations, triggerCueAutomations } from '../automation.service.js';
 import * as httpClient from '../clients/http.client.js';
 import * as oscClient from '../clients/osc.client.js';
 import { makeHTTPAction, makeOSCAction } from './testUtils.js';
@@ -85,6 +85,32 @@ describe('triggerAction()', () => {
       trigger: TimerLifeCycle.onFinish,
       automationId: httpAutomation.id,
     });
+  });
+
+  it('runs cue automations for the cues of their custom field, with the cue in the template data', async () => {
+    const qlab = await addAutomation({
+      title: 'qlab',
+      filterRule: 'all',
+      filters: [],
+      outputs: [makeOSCAction()],
+    });
+    await addTrigger({ title: 'qlab', trigger: TimerLifeCycle.onCueGo, automationId: qlab.id, cueTrack: 'qlab' });
+    const cue = {
+      id: 'c1',
+      label: '12',
+      note: '',
+      track: 'qlab',
+      trackLabel: 'QLab',
+      status: 'go' as const,
+      event: null,
+    };
+
+    triggerCueAutomations(TimerLifeCycle.onCueGo, { ...cue, track: 'camera' });
+    expect(oscSpy).not.toBeCalled();
+
+    triggerCueAutomations(TimerLifeCycle.onCueGo, cue);
+    expect(oscSpy).toHaveBeenCalledTimes(1);
+    expect(oscSpy.mock.calls[0][1]).toMatchObject({ cue: { label: '12' } });
   });
 
   it('should trigger automations for a given action', () => {

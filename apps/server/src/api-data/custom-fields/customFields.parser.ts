@@ -41,7 +41,7 @@ export function sanitiseCustomFields(data: object): CustomFields {
       'colour' in data &&
       typeof data.colour === 'string' &&
       'type' in data &&
-      (data.type === 'text' || data.type === 'image') &&
+      (data.type === 'text' || data.type === 'image' || data.type === 'cue') &&
       checkRegex.isAlphanumericWithSpace(data.label) &&
       key === customFieldLabelToKey(data.label)
     );

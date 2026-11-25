@@ -50,6 +50,9 @@ function RundownHeaderMobile({ viewMode, setViewMode }: RundownHeaderMobileProps
         <Toolbar.Button render={<Toggle />} value={RundownViewMode.Table} className={style.radioButton}>
           Table
         </Toolbar.Button>
+        <Toolbar.Button render={<Toggle />} value={RundownViewMode.Cue} className={style.radioButton}>
+          Cue
+        </Toolbar.Button>
       </ToggleGroup>
     </Toolbar.Root>
   );

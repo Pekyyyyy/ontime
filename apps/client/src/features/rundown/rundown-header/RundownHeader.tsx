@@ -103,6 +103,12 @@ function RundownHeader({ isExtracted, viewMode, setViewMode }: RundownHeaderProp
         >
           Table
         </Tooltip>
+        <Tooltip
+          text='View the cues of the rundown on a timeline'
+          render={<Toolbar.Button render={<Toggle />} value={RundownViewMode.Cue} className={style.radioButton} />}
+        >
+          Cue
+        </Tooltip>
       </ToggleGroup>
 
       {showOffsetToggle && (

@@ -1,9 +1,18 @@
-import { CustomFields, OntimeEntry, TimeStrategy, URLPreset, isOntimeDelay, isOntimeEvent } from 'ontime-types';
+import {
+  CustomField,
+  CustomFields,
+  OntimeEntry,
+  TimeStrategy,
+  URLPreset,
+  isOntimeDelay,
+  isOntimeEvent,
+} from 'ontime-types';
 import { millisToString } from 'ontime-utils';
 import { useCallback } from 'react';
 
 import DelayIndicator from '../../../../common/components/delay-indicator/DelayIndicator';
 import { formatDuration, formatTime } from '../../../../common/utils/time';
+import EventCueChips from '../../../../features/cue-timeline/EventCueChips';
 import { AppMode } from '../../../../ontimeConfig';
 import { getCuesheetColumnAccessPolicy } from '../../cuesheet.policies';
 import type { CuesheetCellContext, CuesheetColumnDef } from '../cuesheetTable.features';
@@ -208,6 +217,21 @@ function MakeFlagField({ row }: CuesheetCellContext) {
   return <FlagCell />;
 }
 
+function getCustomFieldCell(type: CustomField['type']) {
+  if (type === 'cue') return MakeCueField;
+  if (type === 'image') return LazyImage;
+  return MakeCustomField;
+}
+
+/**
+ * A field set as cues shows the cues of each event, the cues are edited in the timeline
+ */
+function MakeCueField({ row, column }: CuesheetCellContext) {
+  const event = row.original;
+  if (!isOntimeEvent(event)) return null;
+  return <EventCueChips eventId={event.id} track={column.id} hideTrack inCell />;
+}
+
 function MakeCustomField({ row, column, table }: CuesheetCellContext) {
   const update = useCallback(
     (newValue: string) => {
@@ -226,17 +250,27 @@ function MakeCustomField({ row, column, table }: CuesheetCellContext) {
   const initialValue = event.custom[column.id] ?? '';
 
   const canWrite = column.columnDef.meta?.canWrite;
+  const cues = isOntimeEvent(event) ? <EventCueChips eventId={event.id} track={column.id} hideTrack inCell /> : null;
+
   if (!canWrite) {
-    return <GhostedText multiline>{initialValue}</GhostedText>;
+    return (
+      <>
+        <GhostedText multiline>{initialValue}</GhostedText>
+        {cues}
+      </>
+    );
   }
 
   return (
-    <MultiLineCell
-      initialValue={initialValue}
-      fieldId={column.id}
-      fieldLabel={getColumnLabel(column)}
-      handleUpdate={update}
-    />
+    <>
+      <MultiLineCell
+        initialValue={initialValue}
+        fieldId={column.id}
+        fieldLabel={getColumnLabel(column)}
+        handleUpdate={update}
+      />
+      {cues}
+    </>
   );
 }
 
@@ -347,7 +381,7 @@ export function makeCuesheetColumns(
       accessorKey: key,
       id: key,
       header: customFields[key].label,
-      cell: customFields[key].type === 'text' ? MakeCustomField : LazyImage,
+      cell: getCustomFieldCell(customFields[key].type),
       size: 250,
       minSize: 75,
       meta: {

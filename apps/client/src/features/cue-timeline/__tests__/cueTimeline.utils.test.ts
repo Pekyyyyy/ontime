@@ -19,7 +19,8 @@ const spans = [
 const customFields: CustomFields = {
   camera: { type: 'text', colour: '#f00', label: 'Camera' },
   image: { type: 'image', colour: '', label: 'Image' },
-  lights: { type: 'text', colour: '', label: 'Lights' },
+  lights: { type: 'cue', colour: '', label: 'Lights' },
+  notes: { type: 'text', colour: '', label: 'Notes' },
 };
 
 function makeCue(patch: Partial<TimelineCue> & Pick<TimelineCue, 'id'>): TimelineCue {
@@ -37,7 +38,7 @@ function makeCue(patch: Partial<TimelineCue> & Pick<TimelineCue, 'id'>): Timelin
 }
 
 describe('makeTimelineModelFromSpans()', () => {
-  it('makes a lane for each text custom field, stacking rows', () => {
+  it('makes a lane for each cue field, and text fields holding cues, stacking rows', () => {
     const cues: RundownCues = {
       a: makeCue({ id: 'a' }),
       b: makeCue({ id: 'b', start: { trigger: 'auto-continue', cueId: 'a', offset: 0 } }),
@@ -74,6 +75,26 @@ describe('dragCue()', () => {
       trigger: 'inside-event',
       eventId: 'e2',
       offset: 600_000,
+    });
+  });
+
+  it('changes the wait of a cue which starts an event when it moves', () => {
+    const pinned = makeCue({
+      id: 'p',
+      end: { trigger: 'duration', duration: 60_000 },
+      nextEvent: { trigger: 'auto-follow', offset: 0, eventId: 'e2' },
+    });
+    const pinnedContext = { spans, resolved: resolveTimelineCues({ p: pinned }, spans), snap: 0 };
+    // it ends at the GO of e2, moving it earlier makes the event wait
+    expect(dragCue(pinned, 'move', -30_000, pinnedContext).nextEvent).toEqual({
+      trigger: 'auto-follow',
+      offset: 30_000,
+      eventId: 'e2',
+    });
+    // the start edge keeps the end on the GO and changes the length
+    expect(dragCue(pinned, 'start', -60_000, pinnedContext)).toMatchObject({
+      end: { trigger: 'duration', duration: 120_000 },
+      nextEvent: { offset: 0 },
     });
   });
 

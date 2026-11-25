@@ -64,6 +64,16 @@ const groupStaticPropertiesNow = [
   '{{groupNow.duration}}',
 ];
 
+const cueProperties = [
+  '{{cue.label}}',
+  '{{cue.note}}',
+  '{{cue.track}}',
+  '{{cue.trackLabel}}',
+  '{{cue.status}}',
+  '{{cue.event.cue}}',
+  '{{cue.event.title}}',
+];
+
 const staticAuxProperties = (index: 1 | 2 | 3) => [
   `{{auxtimer${index}.current}}`,
   `{{auxtimer${index}.duration}}`,
@@ -87,6 +97,8 @@ export function makeAutoCompleteList(customFields: CustomFields): string[] {
     ...Object.entries(customFields).map(([key]) => `{{eventNext.custom.${key}}}`),
     ...groupStaticPropertiesNow,
     ...Object.entries(customFields).map(([key]) => `{{groupNow.custom.${key}}}`),
+    ...cueProperties,
+    ...Object.entries(customFields).map(([key]) => `{{cue.event.custom.${key}}}`),
     ...staticAuxProperties(1),
     ...staticAuxProperties(2),
     ...staticAuxProperties(3),

@@ -565,8 +565,13 @@ export async function editCustomField(key: CustomFieldKey, newField: Partial<Cus
   }
 
   const existingField = customFields[key];
-  // if user provides a type, it must be the same from before
-  if (newField.type && existingField.type !== newField.type) {
+  // if user provides a type, it must be the same from before, a text field can turn into a lane of cues and back
+  const isTextOrCue = (type: string) => type === 'text' || type === 'cue';
+  if (
+    newField.type &&
+    existingField.type !== newField.type &&
+    !(isTextOrCue(existingField.type) && isTextOrCue(newField.type))
+  ) {
     throw new CustomFieldTypeChangeError();
   }
 
