@@ -39,6 +39,12 @@ describe('getPlaybackControlState()', () => {
       expect(goLabel).toBe('Finish');
       expect(goAction).toBe(setPlayback.stop);
     });
+
+    it('plays the cues left in the last event before finishing', () => {
+      const { goLabel, goAction } = stateFor({ playback: Playback.Play, selectedEventIndex: 2, hasCueTarget: true });
+      expect(goLabel).toBe('Next');
+      expect(goAction).toBe(setPlayback.startNext);
+    });
   });
 
   it('locks manual navigation while rolling', () => {

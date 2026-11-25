@@ -17,6 +17,7 @@ import { formatDuration } from '../../../../common/utils/time';
 import { getPlaybackControlState } from '../playbackControl.utils';
 import TapButton from '../tap-button/TapButton';
 import TimerDisplay from '../timer-display/TimerDisplay';
+import { useGoTarget } from '../useGoTarget';
 
 import style from './TrackingPlaybackBar.module.scss';
 
@@ -30,12 +31,15 @@ export default function TrackingPlaybackBar() {
 
   const [addTimeInMs] = useLocalStorage({ key: 'add-time', defaultValue: 300_000 });
 
+  const goTarget = useGoTarget(selectedEventIndex);
   const { disableGo, disableNext, disableAddTime, isPlaying, goAction, goLabel } = getPlaybackControlState({
     playback,
     numEvents,
     selectedEventIndex,
     timerPhase: timer.phase,
+    hasCueTarget: goTarget?.kind === 'cue',
   });
+  const showTarget = goLabel === 'Next' && goTarget !== null;
 
   const disableAddTimeWithAmount = disableAddTime || addTimeInMs === 0;
 
@@ -93,8 +97,14 @@ export default function TrackingPlaybackBar() {
           theme={Playback.Play}
           active={isPlaying}
           className={style.goButton}
+          title={showTarget ? goTarget.description : undefined}
         >
           <span className={style.goLabel}>{goLabel}</span>
+          {showTarget && (
+            <span className={style.goTarget} data-testid='go-target'>
+              {goTarget.text}
+            </span>
+          )}
           <span className={style.shortcutHint}>[space]</span>
         </TapButton>
 

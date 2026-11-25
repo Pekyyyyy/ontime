@@ -39,3 +39,21 @@
 .invertX {
   transform: rotateY(180deg);
 }
+
+.goContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  max-width: 100%;
+}
+
+.goTarget {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 1rem;
+  font-weight: 400;
+  opacity: 0.8;
+}
