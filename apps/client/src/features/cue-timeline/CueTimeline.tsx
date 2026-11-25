@@ -122,6 +122,7 @@ export default function CueTimeline({
   const [zoom, setZoom] = useState(orientation === 'horizontal' ? 8 : 4);
   const selectedCueId = useCueSelection((state) => state.selectedCueId);
   const setSelectedCueId = useCueSelection((state) => state.setSelectedCueId);
+  const openCue = useCueSelection((state) => state.openCue);
   const [drag, setDrag] = useState<DragState | null>(null);
 
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -662,7 +663,11 @@ export default function CueTimeline({
                     onPointerDown={(e) => startCueDrag(e, cue, 'move')}
                     onPointerMove={handlePointerMove}
                     onPointerUp={handlePointerUp}
-                    onDoubleClick={(e) => e.stopPropagation()}
+                    onDoubleClick={(e) => {
+                      // opens the cue for editing, like a double-click on an event
+                      e.stopPropagation();
+                      if (!readOnly) openCue(cueId);
+                    }}
                     data-testid='timeline-cue'
                   >
                     {cue.start.trigger === 'auto-continue' && <LuLink2 className={style.linkIcon} />}

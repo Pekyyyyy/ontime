@@ -294,7 +294,8 @@ export function createCueService({
 function getRuntimeInput(): CueRuntimeInput {
   const runtime = getState();
   const day = runtime.rundown.currentDay ?? 0;
-  const delay = runtime.offset.mode === 'absolute' ? runtime.offset.absolute : runtime.offset.relative;
+  // cues sit on the planned times of day, the relative offset leaves out a late start and would put them out of step
+  const delay = runtime.offset.absolute;
   return {
     now: timeCore.timeOfDayNow() + day * dayInMs,
     delay: runtime.timer.playback === Playback.Stop ? 0 : delay,

@@ -10,7 +10,7 @@ import {
   parseUserTime,
   wouldCreateCycle,
 } from 'ontime-utils';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { IoClose, IoTrash } from 'react-icons/io5';
 import { LuArrowRightFromLine, LuLink2, LuLock } from 'react-icons/lu';
 
@@ -20,6 +20,7 @@ import Input from '../../common/components/input/input/Input';
 import Select from '../../common/components/select/Select';
 import { cx } from '../../common/utils/styleUtils';
 import { TimelineModel, makeLinkedCue } from './cueTimeline.utils';
+import { useCueSelection } from './useCueSelection';
 
 import style from './CueTimeline.module.scss';
 
@@ -225,7 +226,7 @@ export default function CueInspector({
 
       <label className={style.field}>
         Name
-        <TextField key={cue.label} value={cue.label} onSubmit={(label) => update({ label })} />
+        <TextField key={cue.label} value={cue.label} onSubmit={(label) => update({ label })} focusFor={cue.id} />
       </label>
       <label className={style.field}>
         Lane
@@ -405,13 +406,32 @@ export default function CueInspector({
   );
 }
 
-function TextField({ value, onSubmit }: { value: string; onSubmit: (value: string) => void }) {
+function TextField({
+  value,
+  onSubmit,
+  focusFor,
+}: {
+  value: string;
+  onSubmit: (value: string) => void;
+  /** takes the focus when this cue is opened for editing, eg: by a double-click */
+  focusFor?: TimelineCueId;
+}) {
   const [draft, setDraft] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const focusCueId = useCueSelection((state) => state.focusCueId);
+  const clearFocusRequest = useCueSelection((state) => state.clearFocusRequest);
+  useEffect(() => {
+    if (!focusFor || focusCueId !== focusFor) return;
+    clearFocusRequest();
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, [focusFor, focusCueId, clearFocusRequest]);
   const submit = () => {
     if (draft !== value) onSubmit(draft);
   };
   return (
     <Input
+      ref={inputRef}
       fluid
       value={draft}
       onChange={(event) => setDraft(event.target.value)}
