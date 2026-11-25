@@ -75,6 +75,17 @@ export type {
   EntryCustomFields,
 } from './definitions/core/CustomFields.type.js';
 
+// ---> Timeline cues
+export type {
+  RundownCues,
+  TimelineCue,
+  TimelineCueEnd,
+  TimelineCueEndTrigger,
+  TimelineCueId,
+  TimelineCueStart,
+  TimelineCueStartTrigger,
+} from './definitions/core/TimelineCue.type.js';
+
 // SERVER RESPONSES
 export type { QuickStartData } from './api/db/db.type.js';
 export type {

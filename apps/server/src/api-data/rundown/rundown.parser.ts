@@ -11,7 +11,11 @@ import {
   PlayableEvent,
   ProjectRundowns,
   Rundown,
+  RundownCues,
   RundownEntries,
+  TimelineCue,
+  TimelineCueEnd,
+  TimelineCueStart,
   isOntimeDelay,
   isOntimeEvent,
   isOntimeGroup,
@@ -25,9 +29,11 @@ import {
   createMilestone,
   generateId,
   getLinkedTimes,
+  getTimelineEventSpans,
   getTimeFrom,
   isNewLatest,
   isObjectEmpty,
+  sanitiseTimelineCues,
 } from 'ontime-utils';
 
 import { makeNewRundown } from '../../models/dataModel.js';
@@ -180,7 +186,101 @@ export function parseRundown(
     }
   }
 
+  const cues = sanitiseTimelineCues(
+    parseTimelineCues(rundown.cues, emitError),
+    getTimelineEventSpans(parsedRundown),
+    parsedCustomFields,
+  );
+  if (!isObjectEmpty(cues)) {
+    parsedRundown.cues = cues;
+  }
+
   return parsedRundown;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isId(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0;
+}
+
+function parseOffset(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+}
+
+function parseCueStart(value: unknown): TimelineCueStart | null {
+  if (!isRecord(value)) return null;
+  switch (value.trigger) {
+    case 'event-go':
+      return isId(value.eventId) ? { trigger: 'event-go', eventId: value.eventId } : null;
+    case 'inside-event':
+      return isId(value.eventId)
+        ? { trigger: 'inside-event', eventId: value.eventId, offset: parseOffset(value.offset) }
+        : null;
+    case 'auto-follow':
+    case 'auto-continue':
+      return isId(value.cueId)
+        ? { trigger: value.trigger, cueId: value.cueId, offset: parseOffset(value.offset) }
+        : null;
+    default:
+      return null;
+  }
+}
+
+function parseCueEnd(value: unknown): TimelineCueEnd | null {
+  if (!isRecord(value)) return null;
+  switch (value.trigger) {
+    case 'duration':
+      return { trigger: 'duration', duration: parseOffset(value.duration) };
+    case 'event-go':
+      return isId(value.eventId) ? { trigger: 'event-go', eventId: value.eventId } : null;
+    case 'inside-event':
+      return isId(value.eventId)
+        ? { trigger: 'inside-event', eventId: value.eventId, offset: parseOffset(value.offset) }
+        : null;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Parses the shape of untrusted timeline cues
+ * References are not checked here, see sanitiseTimelineCues
+ */
+export function parseTimelineCues(data: unknown, emitError?: ErrorEmitter): RundownCues {
+  const cues: RundownCues = {};
+  if (data === undefined) return cues;
+  if (!isRecord(data)) {
+    emitError?.('Timeline cues are not an object, skipping');
+    return cues;
+  }
+
+  for (const key in data) {
+    const raw = data[key];
+    if (!isRecord(raw) || !isId(raw.track)) {
+      emitError?.('Skipping invalid timeline cue');
+      continue;
+    }
+    const start = parseCueStart(raw.start);
+    const end = parseCueEnd(raw.end);
+    if (!start || !end) {
+      emitError?.('Skipping timeline cue with invalid triggers');
+      continue;
+    }
+    const cue: TimelineCue = {
+      id: key,
+      track: raw.track,
+      label: typeof raw.label === 'string' ? raw.label : '',
+      note: typeof raw.note === 'string' ? raw.note : '',
+      colour: typeof raw.colour === 'string' ? raw.colour : '',
+      start,
+      end,
+    };
+    cues[key] = cue;
+  }
+  return cues;
 }
 
 /**

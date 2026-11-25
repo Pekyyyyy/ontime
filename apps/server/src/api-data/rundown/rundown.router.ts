@@ -32,6 +32,7 @@ import {
   renameRundown,
   renumberEntries,
   reorderEntry,
+  setTimelineCues,
   swapEvents,
   ungroupEntries,
   entryFitGroupDuration,
@@ -49,6 +50,7 @@ import {
   rundownImportValidator,
   rundownPatchValidator,
   rundownPostValidator,
+  timelineCuesPutValidator,
 } from './rundown.validation.js';
 
 export const router: Router = express.Router();
@@ -254,6 +256,14 @@ router.delete('/:rundownId/all', async (req: Request, res: Response<Rundown>) =>
 router.patch('/:rundownId/renumber', entryRenumberValidator, async (req: Request, res: Response<Rundown>) => {
   const { ids, prefix, start, increment } = matchedData<RenumberCues>(req);
   const rundown = await renumberEntries(req.params.rundownId, ids, prefix, start, increment);
+  res.status(200).send(rundown);
+});
+
+/**
+ * Replaces the timeline cues of a rundown
+ */
+router.put('/:rundownId/cues', timelineCuesPutValidator, async (req: Request, res: Response<Rundown>) => {
+  const rundown = await setTimelineCues(req.params.rundownId, req.body.cues);
   res.status(200).send(rundown);
 });
 

@@ -22,16 +22,23 @@ import {
   OntimeGroup,
   PatchWithId,
   Rundown,
+  RundownCues,
   isOntimeEvent,
   isOntimeGroup,
   isPlayableEvent,
 } from 'ontime-types';
 import {
+  type ResolvedTimelineCues,
   addToRundown,
   createGroup,
   customFieldLabelToKey,
   getInsertAfterId,
+  getTimelineEventSpans,
   insertAtIndex,
+  isObjectEmpty,
+  renameTimelineCueTrack,
+  resolveTimelineCues,
+  sanitiseTimelineCues,
   swapEventData,
 } from 'ontime-utils';
 import type { DeepReadonly } from 'ts-essentials';
@@ -148,6 +155,11 @@ export function createTransaction(
   const sourceRundown: Rundown = isLoaded ? cachedRundown : (getStoredRundown(targetId) as Rundown);
   const rundown = options.mutableRundown ? cloneRundown(sourceRundown) : sourceRundown;
   const customFields = options.mutableCustomFields ? structuredClone(projectCustomFields) : projectCustomFields;
+  // the cue times before the change, so that cues of removed events can keep their place
+  const previousCueTimes: ResolvedTimelineCues =
+    options.mutableRundown && sourceRundown.cues
+      ? resolveTimelineCues(sourceRundown.cues, getTimelineEventSpans(sourceRundown))
+      : {};
 
   /**
    * Applies a mutated rundown to its persistence target
@@ -182,6 +194,7 @@ export function createTransaction(
           cachedRundown.flatOrder = metadata.flatEntryOrder;
           rundownMetadata = metadata;
         }
+        setCues(cachedRundown, reconcileCues(cachedRundown, rundown.cues, customFields, previousCueTimes));
 
         // persist after all mutations are applied
         await getDataProvider().setRundown(cachedRundown.id, cachedRundown);
@@ -197,6 +210,7 @@ export function createTransaction(
           rundown.order = processedData.order;
           rundown.flatOrder = processedData.flatEntryOrder;
         }
+        setCues(rundown, reconcileCues(rundown, rundown.cues, customFields, previousCueTimes));
         await getDataProvider().setRundown(targetId, rundown);
         committedRundown = rundown;
         committedRevision = rundown.revision;
@@ -224,6 +238,30 @@ export function createTransaction(
     rundown,
     commit,
   };
+}
+
+/**
+ * Keeps the cues in step with the events and custom fields of a rundown
+ */
+function reconcileCues(
+  rundown: Pick<Rundown, 'entries' | 'flatOrder'>,
+  cues: Readonly<RundownCues> | undefined,
+  customFields: Readonly<CustomFields>,
+  previousCueTimes: ResolvedTimelineCues,
+): RundownCues | undefined {
+  if (!cues || isObjectEmpty(cues)) return undefined;
+  return sanitiseTimelineCues(cues, getTimelineEventSpans(rundown), customFields, previousCueTimes);
+}
+
+/**
+ * Rundowns without cues do not carry the key, as in projects made before cues existed
+ */
+function setCues(rundown: Rundown, cues: RundownCues | undefined) {
+  if (cues && !isObjectEmpty(cues)) {
+    rundown.cues = cues;
+  } else {
+    delete rundown.cues;
+  }
 }
 
 /**
@@ -639,6 +677,7 @@ export function getProcessedRundown(rundownId: string): Readonly<Rundown> {
     order: processed.order,
     flatOrder: processed.flatEntryOrder,
     revision: stored.revision,
+    ...(stored.cues && { cues: stored.cues }),
   };
 }
 
@@ -692,6 +731,9 @@ function customFieldRenameUsages(rundown: Rundown, oldKey: CustomFieldKey, newKe
       delete entry.custom[oldKey];
     }
   });
+  if (rundown.cues) {
+    rundown.cues = renameTimelineCueTrack(rundown.cues, oldKey, newKey);
+  }
 }
 
 /**
@@ -704,6 +746,11 @@ function customFieldRemoveUsages(rundown: Rundown, key: CustomFieldKey) {
       delete entry.custom[key];
     }
   });
+  if (rundown.cues) {
+    for (const cueId in rundown.cues) {
+      if (rundown.cues[cueId].track === key) delete rundown.cues[cueId];
+    }
+  }
 }
 
 export const customFieldMutation = {
@@ -733,6 +780,7 @@ export async function replaceStoredRundown(parsedRundown: Readonly<Rundown>) {
     order: processed.order,
     flatOrder: processed.flatEntryOrder,
     revision: parsedRundown.revision,
+    ...(parsedRundown.cues && { cues: parsedRundown.cues }),
   });
 }
 
@@ -758,6 +806,7 @@ export function init(initialRundown: Readonly<Rundown>, initialCustomFields: Rea
     order,
     flatOrder: metadata.flatEntryOrder,
     revision: rundown.revision,
+    ...(rundown.cues && { cues: rundown.cues }),
   };
   rundownMetadata = metadata;
 

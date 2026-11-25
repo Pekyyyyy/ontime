@@ -340,6 +340,8 @@ export function mergeRundownPreservingFields(
     flatOrder: [...incoming.flatOrder],
     revision: existing.revision + 1,
     entries,
+    // the sheet has no cues, those which still have their events are kept
+    ...(existing.cues && { cues: structuredClone(existing.cues) }),
   };
 }
 
@@ -557,6 +559,7 @@ export function cloneRundown(rundown: Readonly<Rundown>): Rundown {
     order: rundown.order.slice(),
     flatOrder: rundown.flatOrder.slice(),
     entries,
+    ...(rundown.cues && { cues: structuredClone(rundown.cues) }),
   };
 }
 

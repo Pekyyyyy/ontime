@@ -14,6 +14,7 @@ import {
   RefetchKey,
   Rundown,
   RundownImportMergeStrategy,
+  RundownCues,
   isOntimeDelay,
   isOntimeEvent,
   isOntimeGroup,
@@ -55,7 +56,7 @@ import {
   InvalidRundownTitleError,
   RundownDeleteConflictError,
 } from './rundown.errors.js';
-import { parseRundown, sanitiseCustomFields } from './rundown.parser.js';
+import { parseRundown, parseTimelineCues, sanitiseCustomFields } from './rundown.parser.js';
 import {
   cloneRundown,
   getDuplicatedRundownTitle,
@@ -531,6 +532,23 @@ async function updateBackgroundRundowns(loadedRundownId: string, mutate: (rundow
 }
 
 /**
+ * Replaces the timeline cues of a rundown
+ * Cues pointing at events, cues or custom fields which do not exist are dropped on commit
+ */
+export async function setTimelineCues(rundownId: string, incoming: unknown): Promise<Rundown> {
+  const { rundown, commit } = createTransaction({ rundownId, mutableRundown: true });
+
+  const cues: RundownCues = parseTimelineCues(incoming);
+  rundown.cues = cues;
+
+  // cues do not change the timing of the events
+  const { rundown: responseRundown, revision } = await commit(false);
+  notifyChange(RefetchKey.Rundown, revision, rundown.id);
+
+  return responseRundown;
+}
+
+/**
  * Edits an existing custom field
  * In practice users can only change the label and the colour of the field
  * @throws if the field does not exist
@@ -818,7 +836,8 @@ export async function applyImportToRundown(
   const source =
     strategy === 'merge'
       ? mergeRundownPreservingFields(incomingRundown, existing, providedFields)
-      : { ...incomingRundown, id: existing.id, title: existing.title };
+      : // the sheet has no cues, those which still have their events are kept
+        { ...incomingRundown, id: existing.id, title: existing.title, cues: existing.cues };
   const parsed = await parseImportAndCommitCustomFields(source, incomingCustomFields);
   await replaceRundown(targetRundownId, parsed);
 

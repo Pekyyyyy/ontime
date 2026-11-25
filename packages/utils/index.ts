@@ -36,6 +36,26 @@ export {
 } from './src/rundown-utils/entryDefinitions.js';
 export { createDelay, createEvent, createGroup, createMilestone, makeString } from './src/rundown-utils/entryUtils.js';
 
+// timeline cues
+export {
+  anchorEndAt,
+  anchorStartAt,
+  getDependentCues,
+  getEventAtTime,
+  getTimelineEventSpans,
+  layoutTimelineCues,
+  makeEnd,
+  makeStart,
+  renameTimelineCueTrack,
+  resolveTimelineCues,
+  sanitiseTimelineCues,
+  wouldCreateCycle,
+  type ResolvedTimelineCue,
+  type ResolvedTimelineCues,
+  type TimelineCueLayout,
+  type TimelineEventSpan,
+} from './src/timeline-cues/timelineCues.js';
+
 // time format utils
 export {
   dayInMs,
