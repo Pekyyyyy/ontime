@@ -15,6 +15,7 @@ import { LuArrowDownToLine } from 'react-icons/lu';
 import Tooltip from '../../../common/components/tooltip/Tooltip';
 import { cx } from '../../../common/utils/styleUtils';
 import { AppMode } from '../../../ontimeConfig';
+import EventCueChips from '../../cue-timeline/EventCueChips';
 import TitleEditor from '../common/TitleEditor';
 import TimeInputFlow from '../time-input-flow/TimeInputFlow';
 import { useEditorFollowMode } from '../useEditorFollowMode';
@@ -169,6 +170,7 @@ function RundownEventInner({
           </Tooltip>
         </div>
       </div>
+      <EventCueChips eventId={eventId} className={style.cueSection} />
     </>
   );
 }

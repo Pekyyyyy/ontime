@@ -12,6 +12,7 @@ import { getIsNavigationLocked } from '../../externals';
 import { AppMode } from '../../ontimeConfig';
 import EntryEditModal from '../../views/cuesheet/cuesheet-edit-modal/EntryEditModal';
 import { EditorLayoutMode, useEditorLayout } from '../../views/editor/useEditorLayout';
+import { useCueSelection } from '../cue-timeline/useCueSelection';
 import RundownEntryEditor from './entry-editor/RundownEntryEditor';
 import FinderPlacement from './placements/FinderPlacement';
 import RenumberCuesDialog from './renumber-cues-dialog/RenumberCuesDialog';
@@ -20,6 +21,7 @@ import RundownHeader from './rundown-header/RundownHeader';
 import RundownHeaderMobile from './rundown-header/RundownHeaderMobile';
 import RundownTable from './rundown-table/RundownTable';
 import { RundownViewMode } from './rundown.options';
+import RundownCueView from './RundownCueView';
 import RundownList from './RundownList';
 import { useEditorFollowMode } from './useEditorFollowMode';
 
@@ -36,6 +38,7 @@ function RundownExport() {
     defaultValue: RundownViewMode.List,
   });
   const isSmallDevice = useIsSmallDevice();
+  const hasSelectedCue = useCueSelection((state) => state.selectedCueId !== null);
 
   if (isSmallDevice && isExtracted) {
     return (
@@ -61,7 +64,8 @@ function RundownExport() {
   const hideSideBar =
     layoutMode === EditorLayoutMode.TRACKING ||
     (isExtracted && editorMode === AppMode.Run) ||
-    viewMode === RundownViewMode.Table;
+    // the table edits events in a modal, a selected cue still opens the side panel
+    (viewMode === RundownViewMode.Table && !hasSelectedCue);
 
   return (
     <ProtectRoute permission='editor'>
@@ -72,7 +76,12 @@ function RundownExport() {
           <Editor.Panel className={style.list}>
             <ErrorBoundary>
               {!isExtracted && <Editor.CornerExtract onClick={(event) => handleLinks('rundown', event)} />}
-              <RundownRoot isExtracted={isExtracted} viewMode={viewMode} setViewMode={setViewMode} />
+              <RundownRoot
+                isExtracted={isExtracted}
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+                hasSidePanel={!hideSideBar}
+              />
               <RundownContextMenu />
             </ErrorBoundary>
           </Editor.Panel>
@@ -94,9 +103,10 @@ interface RundownRootProps {
   isExtracted?: boolean;
   viewMode: RundownViewMode;
   setViewMode: (mode: RundownViewMode) => void;
+  hasSidePanel?: boolean;
 }
 
-function RundownRoot({ isSmallDevice, isExtracted, viewMode, setViewMode }: RundownRootProps) {
+function RundownRoot({ isSmallDevice, isExtracted, viewMode, setViewMode, hasSidePanel }: RundownRootProps) {
   return (
     <div className={style.rundownRoot}>
       {isSmallDevice ? (
@@ -104,7 +114,9 @@ function RundownRoot({ isSmallDevice, isExtracted, viewMode, setViewMode }: Rund
       ) : (
         <RundownHeader isExtracted={isExtracted} viewMode={viewMode} setViewMode={setViewMode} />
       )}
-      {viewMode === RundownViewMode.List ? <RundownList /> : <RundownTable />}
+      {viewMode === RundownViewMode.List && <RundownList />}
+      {viewMode === RundownViewMode.Table && <RundownTable />}
+      {viewMode === RundownViewMode.Cue && <RundownCueView hasSidePanel={hasSidePanel} />}
       {viewMode === RundownViewMode.Table && <EntryEditModal />}
       <RenumberCuesDialog />
     </div>

@@ -1,9 +1,10 @@
 import { OntimeEntry, isOntimeEvent, isOntimeGroup, isOntimeMilestone } from 'ontime-types';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import useRundown from '../../../common/hooks-query/useRundown';
-import CueTimeline from '../../cue-timeline/CueTimeline';
-import { useCueTimelinePanel } from '../../cue-timeline/useCueTimelinePanel';
+import { AppMode } from '../../../ontimeConfig';
+import SelectedCueEditor from '../../cue-timeline/SelectedCueEditor';
+import { useCueSelection } from '../../cue-timeline/useCueSelection';
 import { useEditorFollowMode } from '../useEditorFollowMode';
 import { useEventSelection } from '../useEventSelection';
 import EventEditorFooter from './composite/EventEditorFooter';
@@ -19,8 +20,17 @@ export default function RundownEntryEditor() {
   const selectedEvents = useEventSelection((state) => state.selectedEvents);
   const cursor = useEventSelection((state) => state.cursor);
   const { data } = useRundown();
-  const { orientation, setOrientation } = useCueTimelinePanel('editor', 'vertical');
   const { editorMode } = useEditorFollowMode();
+  const selectedCueId = useCueSelection((state) => state.selectedCueId);
+  const setSelectedCueId = useCueSelection((state) => state.setSelectedCueId);
+
+  // picking an event edits it, in place of the cue
+  const lastSelection = useRef(selectedEvents);
+  useEffect(() => {
+    if (lastSelection.current === selectedEvents) return;
+    lastSelection.current = selectedEvents;
+    setSelectedCueId(null);
+  }, [selectedEvents, setSelectedCueId]);
 
   const entry = useMemo<OntimeEntry | null>(() => {
     if (data.order.length === 0) {
@@ -30,10 +40,17 @@ export default function RundownEntryEditor() {
     return getEditTarget(selectedEvents, cursor, data.entries);
   }, [data.order.length, data.entries, selectedEvents, cursor]);
 
+  // a selected cue is edited here, its timeline leaves the editing to this panel
+  if (selectedCueId && data.cues?.[selectedCueId] && editorMode === AppMode.Edit) {
+    return (
+      <div className={style.rundownEditor} data-testid='editor-container'>
+        <SelectedCueEditor />
+      </div>
+    );
+  }
+
   if (!entry) {
-    // with nothing selected, the side panel edits the cues of the rundown
-    if (data.order.length === 0) return <EventEditorEmpty />;
-    return <CueTimeline orientation={orientation} onOrientationChange={setOrientation} mode={editorMode} />;
+    return <EventEditorEmpty />;
   }
 
   if (isOntimeEvent(entry)) {

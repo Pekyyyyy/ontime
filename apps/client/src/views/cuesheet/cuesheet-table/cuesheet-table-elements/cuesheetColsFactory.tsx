@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 
 import DelayIndicator from '../../../../common/components/delay-indicator/DelayIndicator';
 import { formatDuration, formatTime } from '../../../../common/utils/time';
+import EventCueChips from '../../../../features/cue-timeline/EventCueChips';
 import { AppMode } from '../../../../ontimeConfig';
 import { getCuesheetColumnAccessPolicy } from '../../cuesheet.policies';
 import type { CuesheetCellContext, CuesheetColumnDef } from '../cuesheetTable.features';
@@ -226,17 +227,27 @@ function MakeCustomField({ row, column, table }: CuesheetCellContext) {
   const initialValue = event.custom[column.id] ?? '';
 
   const canWrite = column.columnDef.meta?.canWrite;
+  const cues = isOntimeEvent(event) ? <EventCueChips eventId={event.id} track={column.id} hideTrack inCell /> : null;
+
   if (!canWrite) {
-    return <GhostedText multiline>{initialValue}</GhostedText>;
+    return (
+      <>
+        <GhostedText multiline>{initialValue}</GhostedText>
+        {cues}
+      </>
+    );
   }
 
   return (
-    <MultiLineCell
-      initialValue={initialValue}
-      fieldId={column.id}
-      fieldLabel={getColumnLabel(column)}
-      handleUpdate={update}
-    />
+    <>
+      <MultiLineCell
+        initialValue={initialValue}
+        fieldId={column.id}
+        fieldLabel={getColumnLabel(column)}
+        handleUpdate={update}
+      />
+      {cues}
+    </>
   );
 }
 

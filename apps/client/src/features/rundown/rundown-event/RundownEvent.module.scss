@@ -20,6 +20,18 @@ $skip-opacity: 0.2;
   grid-template-columns: $block-binder-width 3rem minmax(0, 1fr) 3rem;
   grid-template-rows: 0.125rem 2rem 2rem auto 0.125rem;
   align-items: center;
+
+  // timeline cues which play during the event take a row of their own
+  &:has(.cueSection) {
+    grid-template-areas:
+      'binder ...        ...     ...'
+      'binder pb-actions times   chip'
+      'binder pb-actions title   title'
+      'binder pb-actions estatus estatus'
+      'binder pb-actions cues    cues'
+      'binder ...        ...     ...';
+    grid-template-rows: 0.125rem 2rem 2rem auto auto 0.125rem;
+  }
   padding-right: $block-clearance;
   gap: 2px;
   row-gap: 0.25rem;
@@ -249,4 +261,9 @@ $skip-opacity: 0.2;
   .statusIcon.disabled {
     color: $gray-1000;
   }
+}
+
+.cueSection {
+  grid-area: cues;
+  padding-bottom: 2px;
 }

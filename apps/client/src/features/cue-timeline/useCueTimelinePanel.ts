@@ -5,7 +5,10 @@ import type { TimelineOrientation } from './cueTimeline.utils';
 /**
  * Remembers, per surface, whether the cue timeline is shown and which way time runs
  */
-export function useCueTimelinePanel(surface: 'cuesheet' | 'editor', defaultOrientation: TimelineOrientation) {
+export function useCueTimelinePanel(
+  surface: 'cuesheet' | 'editor' | 'rundown',
+  defaultOrientation: TimelineOrientation,
+) {
   const [isOpen, setOpen] = useLocalStorage<boolean>({
     key: `cue-timeline-${surface}-open`,
     defaultValue: surface === 'editor',
