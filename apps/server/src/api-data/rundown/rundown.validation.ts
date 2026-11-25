@@ -112,6 +112,12 @@ export const rundownArrayOfIds = [
   requestValidationFunction,
 ];
 
+export const timelineCuesPutValidator = [
+  param('rundownId').isString().trim().notEmpty(),
+  body('cues').isObject(),
+  requestValidationFunction,
+];
+
 export const entryRenumberValidator = [
   body('ids').isArray().notEmpty(),
   body('ids.*').isString(),
