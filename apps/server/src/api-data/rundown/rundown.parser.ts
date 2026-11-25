@@ -280,6 +280,11 @@ export function parseTimelineCues(data: unknown, emitError?: ErrorEmitter): Rund
       goMode: raw.goMode === 'manual' ? 'manual' : 'auto',
       followsDelay: typeof raw.followsDelay === 'boolean' ? raw.followsDelay : true,
     };
+    const nextEvent = raw.nextEvent as Record<string, unknown> | null | undefined;
+    if (nextEvent && (nextEvent.trigger === 'auto-follow' || nextEvent.trigger === 'auto-continue')) {
+      const offset = Number(nextEvent.offset);
+      cue.nextEvent = { trigger: nextEvent.trigger, offset: Number.isFinite(offset) ? Math.max(0, offset) : 0 };
+    }
     cues[key] = cue;
   }
   return cues;

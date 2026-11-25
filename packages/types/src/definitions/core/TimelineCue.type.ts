@@ -34,6 +34,16 @@ export type TimelineCueEnd =
  */
 export type TimelineCueGoMode = 'auto' | 'manual';
 
+/**
+ * A cue can give the next event its GO
+ * - auto-follow: once the cue ends, after the offset
+ * - auto-continue: with the GO of the cue, after the offset
+ */
+export type TimelineCueNextEvent = {
+  trigger: 'auto-follow' | 'auto-continue';
+  offset: number;
+};
+
 export type TimelineCueStartTrigger = TimelineCueStart['trigger'];
 export type TimelineCueEndTrigger = TimelineCueEnd['trigger'];
 
@@ -55,6 +65,8 @@ export type TimelineCue = {
   goMode: TimelineCueGoMode;
   /** whether the time of the cue moves with the running delay of the show, or stays at the planned time */
   followsDelay: boolean;
+  /** when given, the cue moves the show to the next event */
+  nextEvent?: TimelineCueNextEvent | null;
 };
 
 export type RundownCues = Record<TimelineCueId, TimelineCue>;

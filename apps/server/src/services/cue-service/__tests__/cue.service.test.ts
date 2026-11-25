@@ -5,6 +5,7 @@ import { CueRuntimeInput, createCueService } from '../cue.service.js';
 
 vi.mock('../../../api-data/logs/logs.service.js');
 vi.mock('../../../stores/EventStore.js', () => ({ eventStore: { set: vi.fn() } }));
+vi.mock('../../runtime-service/runtime.service.js', () => ({ runtimeService: { startNext: vi.fn() } }));
 
 function makeCue(patch: Partial<TimelineCue> & Pick<TimelineCue, 'id'>): TimelineCue {
   return {
@@ -32,13 +33,15 @@ function setup(cues: RundownCues, initial: Partial<CueRuntimeInput> = {}) {
   });
   const runtime: CueRuntimeInput = { now: 0, delay: 0, playback: Playback.Stop, eventNowId: null, ...initial };
   const emitted: CuePlayback[] = [];
+  const startNextEvent = vi.fn();
   const service = createCueService({
     getRundown: () => rundown,
     getRuntime: () => runtime,
     emit: (playback) => emitted.push(playback),
     log: () => {},
+    startNextEvent,
   });
-  return { service, runtime, emitted };
+  return { service, runtime, emitted, startNextEvent };
 }
 
 describe('cue service', () => {
@@ -156,5 +159,38 @@ describe('cue service', () => {
     service.update();
     expect(service.getState().cues.follow).toBeUndefined();
     expect(() => service.go('one')).toThrow('rearm');
+  });
+
+  it('moves the show to the next event once a cue asks for it', () => {
+    const { service, runtime, startNextEvent } = setup({
+      video: makeCue({ id: 'video', goMode: 'manual', nextEvent: { trigger: 'auto-follow', offset: 500 } }),
+      sting: makeCue({ id: 'sting', goMode: 'manual', nextEvent: { trigger: 'auto-continue', offset: 0 } }),
+    });
+    Object.assign(runtime, { now: 10_000, playback: Playback.Play, eventNowId: 'a' });
+
+    service.go('video');
+    runtime.now = 11_400;
+    service.update();
+    expect(startNextEvent).not.toHaveBeenCalled();
+    runtime.now = 11_500;
+    service.update();
+    expect(startNextEvent).toHaveBeenCalledTimes(1);
+
+    // the show moved on, the sting gives the GO of the next event with its own GO
+    runtime.eventNowId = 'b';
+    service.go('sting');
+    expect(startNextEvent).toHaveBeenCalledTimes(2);
+  });
+
+  it('forgets the GO of the next event on panic', () => {
+    const { service, runtime, startNextEvent } = setup({
+      video: makeCue({ id: 'video', goMode: 'manual', nextEvent: { trigger: 'auto-follow', offset: 0 } }),
+    });
+    Object.assign(runtime, { now: 10_000, playback: Playback.Play, eventNowId: 'a' });
+    service.go('video');
+    service.panic();
+    runtime.now = 12_000;
+    service.update();
+    expect(startNextEvent).not.toHaveBeenCalled();
   });
 });

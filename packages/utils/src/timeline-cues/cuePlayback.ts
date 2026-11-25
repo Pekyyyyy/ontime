@@ -187,6 +187,7 @@ export function settleCuePlayback(playback: Readonly<PlaybackEntries>, now: numb
 /**
  * The cue the operator's Next plays before moving to the next event
  * - an armed cue planned to start within the running event, or started by its GO
+ * - a cue which gives the next event its GO, Next plays it and the event follows the cue
  * - cues chained to a cue which already ran are left out, they fire by themselves
  * @returns null when every cue of the event had its GO
  */
@@ -203,9 +204,10 @@ export function getNextCueInEvent(
     if (!times || hasPlayed(playback[cueId])) continue;
     if (isChainedCue(cue) && hasPlayed(playback[cue.start.cueId])) continue;
 
+    // a cue which moves the show on can sit right at the GO of the next event, Next is its GO
+    const spanEnd = cue.nextEvent ? span.end + 1 : span.end;
     const isOfEvent =
-      ('eventId' in cue.start && cue.start.eventId === span.id) ||
-      (times.start >= span.start && times.start < span.end);
+      ('eventId' in cue.start && cue.start.eventId === span.id) || (times.start >= span.start && times.start < spanEnd);
     if (!isOfEvent) continue;
     if (next === null || times.start < resolved[next].start) next = cueId;
   }

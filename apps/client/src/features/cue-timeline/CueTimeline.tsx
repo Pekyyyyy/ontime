@@ -13,7 +13,7 @@ import {
   useState,
 } from 'react';
 import { IoAdd, IoRemove } from 'react-icons/io5';
-import { LuArrowDownUp, LuArrowLeftRight, LuLink2, LuOctagonX, LuRotateCcw } from 'react-icons/lu';
+import { LuArrowDownUp, LuArrowLeftRight, LuLink2, LuOctagonX, LuRotateCcw, LuSkipForward } from 'react-icons/lu';
 
 import Button from '../../common/components/buttons/Button';
 import IconButton from '../../common/components/buttons/IconButton';
@@ -656,6 +656,14 @@ export default function CueTimeline({ orientation, onOrientationChange, mode, cl
                       </button>
                     )}
                     <span className={style.cueLabel}>{cue.label}</span>
+                    {cue.nextEvent && (
+                      <LuSkipForward
+                        className={style.nextEventIcon}
+                        aria-label={
+                          cue.nextEvent.trigger === 'auto-follow' ? 'Next event follows' : 'Next event continues'
+                        }
+                      />
+                    )}
                     {!readOnly && (
                       <span
                         className={cx([style.handle, style.handleStart])}

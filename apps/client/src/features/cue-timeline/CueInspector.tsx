@@ -40,6 +40,12 @@ const timingOptions = [
   { value: 'fixed', label: 'Planned time' },
 ];
 
+const nextEventOptions = [
+  { value: 'none', label: 'Starts by itself' },
+  { value: 'auto-follow', label: 'Follows this cue (auto-follow)' },
+  { value: 'auto-continue', label: 'Starts with this cue (auto-continue)' },
+];
+
 /** a time of the timeline, shown as a time of day */
 const toTimeOfDay = (time: number) => millisToString(((time % dayInMs) + dayInMs) % dayInMs);
 
@@ -160,6 +166,15 @@ export default function CueInspector({
       options,
     );
     update({ end });
+  };
+
+  /** a cue which moves the show on waits for Next, which becomes its GO */
+  const setNextEvent = (value: string) => {
+    if (value === 'auto-follow' || value === 'auto-continue') {
+      update({ nextEvent: { trigger: value, offset: cue.nextEvent?.offset ?? 0 }, goMode: 'manual' });
+    } else {
+      update({ nextEvent: null });
+    }
   };
 
   const setOneShot = (isOneShot: boolean) => {
@@ -320,6 +335,33 @@ export default function CueInspector({
                 fluid
               />
             )}
+          </>
+        )}
+      </div>
+
+      <div className={style.fieldGroup}>
+        <span className={style.groupTitle}>Next event</span>
+        <Select
+          aria-label='Next event'
+          options={nextEventOptions}
+          value={cue.nextEvent?.trigger ?? 'none'}
+          onValueChange={(value) => value && setNextEvent(value)}
+          fluid
+        />
+        {cue.nextEvent && (
+          <>
+            <label className={style.inlineField}>
+              Wait
+              <TimeField
+                key={cue.nextEvent.offset}
+                value={cue.nextEvent.offset}
+                onSubmit={(offset) => cue.nextEvent && update({ nextEvent: { ...cue.nextEvent, offset } })}
+              />
+            </label>
+            <span className={style.summary}>
+              Next is the GO of this cue, the following event starts{' '}
+              {cue.nextEvent.trigger === 'auto-follow' ? 'when the cue ends' : 'with the cue'}
+            </span>
           </>
         )}
       </div>

@@ -168,3 +168,18 @@ describe('panicCuePlayback()', () => {
     });
   });
 });
+
+describe('getNextCueInEvent() with a cue which moves the show on', () => {
+  it('takes the GO of Next for a cue at the start of the next event', () => {
+    const cues = toCues(
+      makeCue({
+        id: 'sting',
+        goMode: 'manual',
+        start: { trigger: 'event-go', eventId: 'e2' },
+        nextEvent: { trigger: 'auto-continue', offset: 0 },
+      }),
+    );
+    const resolved = resolveTimelineCues(cues, spans);
+    expect(getNextCueInEvent(cues, resolved, spans[0], {})).toBe('sting');
+  });
+});

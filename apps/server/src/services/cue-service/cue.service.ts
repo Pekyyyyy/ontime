@@ -22,6 +22,7 @@ import { getCurrentRundown } from '../../api-data/rundown/rundown.dao.js';
 import * as timeCore from '../../lib/time-core/timeCore.js';
 import { eventStore } from '../../stores/EventStore.js';
 import { getState } from '../../stores/runtimeState.js';
+import { runtimeService } from '../runtime-service/runtime.service.js';
 
 export type CueRuntimeInput = {
   /** now, along the timeline: time of day plus the day of the show */
@@ -37,7 +38,12 @@ type CueServiceDeps = {
   getRuntime: () => CueRuntimeInput;
   emit: (playback: CuePlayback) => void;
   log: (message: string, cueLabel: string) => void;
+  /** gives the next event its GO, for cues which move the show on */
+  startNextEvent: () => void;
 };
+
+/** a GO of the next event which a cue asked for */
+type PendingEventGo = { cueId: TimelineCueId; at: number; eventId: string };
 
 export class CueCommandError extends Error {}
 
@@ -48,7 +54,7 @@ export class CueCommandError extends Error {}
  * - manual cues wait for a GO, a cue which ran needs a rearm to run again
  * - tests run a cue without its chain and without marking it as played
  */
-export function createCueService({ getRundown, getRuntime, emit, log }: CueServiceDeps) {
+export function createCueService({ getRundown, getRuntime, emit, log, startNextEvent }: CueServiceDeps) {
   let state: CuePlayback = { rundownId: null, cues: {} };
   let cache: {
     id: string;
@@ -59,6 +65,7 @@ export function createCueService({ getRundown, getRuntime, emit, log }: CueServi
   } | null = null;
   let lastEventNowId: string | null = null;
   let lastPlayback: Playback | null = null;
+  let pendingEventGo: PendingEventGo[] = [];
 
   function getCues() {
     const rundown = getRundown();
@@ -101,8 +108,15 @@ export function createCueService({ getRundown, getRuntime, emit, log }: CueServi
     const { cues, schedule } = getSchedule(runtime);
     const cue = cues[cueId];
     if (!cue) return;
-    state = { ...state, cues: { ...state.cues, [cueId]: fireCueEntry(cueId, schedule, runtime.now, status) } };
+    const entry = fireCueEntry(cueId, schedule, runtime.now, status);
+    state = { ...state, cues: { ...state.cues, [cueId]: entry } };
     log(status === 'test' ? 'Cue test' : 'Cue GO', cue.label);
+
+    // a test does not move the show on
+    if (status === 'running' && cue.nextEvent && runtime.eventNowId) {
+      const base = cue.nextEvent.trigger === 'auto-continue' ? entry.firedAt : entry.endsAt;
+      pendingEventGo.push({ cueId, at: base + cue.nextEvent.offset, eventId: runtime.eventNowId });
+    }
   }
 
   /**
@@ -115,6 +129,7 @@ export function createCueService({ getRundown, getRuntime, emit, log }: CueServi
     // a stopped show starts over with every cue armed
     if (runtime.playback === Playback.Stop && lastPlayback !== null && lastPlayback !== Playback.Stop) {
       state = { ...state, cues: {} };
+      pendingEventGo = [];
     }
 
     const isRunning = runtime.playback === Playback.Play || runtime.playback === Playback.Roll;
@@ -146,6 +161,24 @@ export function createCueService({ getRundown, getRuntime, emit, log }: CueServi
     lastEventNowId = runtime.eventNowId;
     lastPlayback = runtime.playback;
     flush();
+    moveShowOn(runtime);
+  }
+
+  /**
+   * Gives the next event its GO once a cue asked for it
+   * The request lapses when the show moved on by itself, or its cue stopped or was rearmed
+   */
+  function moveShowOn(runtime: CueRuntimeInput) {
+    if (pendingEventGo.length === 0) return;
+    pendingEventGo = pendingEventGo.filter((pending) => {
+      const entry = state.cues[pending.cueId];
+      return pending.eventId === runtime.eventNowId && (entry?.status === 'running' || entry?.status === 'done');
+    });
+    const due = pendingEventGo.find((pending) => runtime.now >= pending.at);
+    if (!due) return;
+    pendingEventGo = [];
+    log('Cue GO next event', getCues().cues[due.cueId]?.label ?? due.cueId);
+    startNextEvent();
   }
 
   function go(cueId: TimelineCueId) {
@@ -206,6 +239,7 @@ export function createCueService({ getRundown, getRuntime, emit, log }: CueServi
   function panic() {
     state = reconcile();
     const stopped = panicCuePlayback(state.cues, getRuntime().now);
+    pendingEventGo = [];
     if (stopped !== state.cues) {
       state = { ...state, cues: stopped };
       log('Cue panic', 'all running cues');
@@ -215,6 +249,7 @@ export function createCueService({ getRundown, getRuntime, emit, log }: CueServi
 
   function rearmAll() {
     state = { ...reconcile(), cues: {} };
+    pendingEventGo = [];
     flush();
   }
 
@@ -248,6 +283,7 @@ export const cueService = createCueService({
   getRuntime: getRuntimeInput,
   emit: (playback) => eventStore.set('cuePlayback', playback),
   log: (message, cueLabel) => logger.info(LogOrigin.Playback, message, { cue: cueLabel }),
+  startNextEvent: () => runtimeService.startNext(),
 });
 
 let interval: NodeJS.Timeout | null = null;

@@ -82,6 +82,7 @@ export type {
   TimelineCueEnd,
   TimelineCueEndTrigger,
   TimelineCueGoMode,
+  TimelineCueNextEvent,
   TimelineCueId,
   TimelineCueStart,
   TimelineCueStartTrigger,
