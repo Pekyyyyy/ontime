@@ -284,6 +284,7 @@ export function parseTimelineCues(data: unknown, emitError?: ErrorEmitter): Rund
     if (nextEvent && (nextEvent.trigger === 'auto-follow' || nextEvent.trigger === 'auto-continue')) {
       const offset = Number(nextEvent.offset);
       cue.nextEvent = { trigger: nextEvent.trigger, offset: Number.isFinite(offset) ? Math.max(0, offset) : 0 };
+      if (typeof nextEvent.eventId === 'string' && nextEvent.eventId) cue.nextEvent.eventId = nextEvent.eventId;
     }
     cues[key] = cue;
   }

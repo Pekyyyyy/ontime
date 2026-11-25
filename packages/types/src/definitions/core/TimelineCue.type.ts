@@ -42,6 +42,12 @@ export type TimelineCueGoMode = 'auto' | 'manual';
 export type TimelineCueNextEvent = {
   trigger: 'auto-follow' | 'auto-continue';
   offset: number;
+  /**
+   * the event which the cue starts, the cue is drawn and planned against its GO
+   * - auto-follow: the cue ends the wait before the GO
+   * - auto-continue: the cue starts the wait before the GO
+   */
+  eventId?: EntryId;
 };
 
 export type TimelineCueStartTrigger = TimelineCueStart['trigger'];

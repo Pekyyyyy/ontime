@@ -77,6 +77,26 @@ describe('dragCue()', () => {
     });
   });
 
+  it('changes the wait of a cue which starts an event when it moves', () => {
+    const pinned = makeCue({
+      id: 'p',
+      end: { trigger: 'duration', duration: 60_000 },
+      nextEvent: { trigger: 'auto-follow', offset: 0, eventId: 'e2' },
+    });
+    const pinnedContext = { spans, resolved: resolveTimelineCues({ p: pinned }, spans), snap: 0 };
+    // it ends at the GO of e2, moving it earlier makes the event wait
+    expect(dragCue(pinned, 'move', -30_000, pinnedContext).nextEvent).toEqual({
+      trigger: 'auto-follow',
+      offset: 30_000,
+      eventId: 'e2',
+    });
+    // the start edge keeps the end on the GO and changes the length
+    expect(dragCue(pinned, 'start', -60_000, pinnedContext)).toMatchObject({
+      end: { trigger: 'duration', duration: 120_000 },
+      nextEvent: { offset: 0 },
+    });
+  });
+
   it('keeps the end of a cue with a duration in place when the start moves', () => {
     const timed = makeCue({ id: 'b' });
     const timedContext = { spans, resolved: resolveTimelineCues({ b: timed }, spans), snap: 0 };

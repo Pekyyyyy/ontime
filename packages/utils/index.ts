@@ -40,6 +40,7 @@ export { createDelay, createEvent, createGroup, createMilestone, makeString } fr
 export {
   anchorEndAt,
   anchorStartAt,
+  getPinnedCueTimes,
   getDependentCues,
   getEventAtTime,
   getTimelineEventSpans,

@@ -19,6 +19,7 @@ import {
   generateId,
   getDependentCues,
   getEventAtTime,
+  getPinnedCueTimes,
   getTimelineEventSpans,
   layoutTimelineCues,
   resolveTimelineCues,
@@ -139,6 +140,29 @@ export function dragCue(cue: TimelineCue, kind: CueDragKind, delta: number, cont
   const times = context.resolved[cue.id];
   if (!times) return cue;
   const options = { spans: context.spans, resolved: context.resolved, snap: context.snap };
+
+  // a cue which starts an event is held against its GO: a drag changes its wait and its length
+  const target = cue.nextEvent?.eventId ? context.spans.find((span) => span.id === cue.nextEvent?.eventId) : undefined;
+  if (cue.nextEvent && target && getPinnedCueTimes(cue, times.end - times.start, context.spans)) {
+    let start = times.start;
+    let end = times.end;
+    if (kind === 'move') {
+      start += delta;
+      end += delta;
+    } else if (kind === 'start') {
+      start = Math.min(start + delta, end);
+    } else {
+      end = Math.max(end + delta, start);
+    }
+    const go = cue.nextEvent.trigger === 'auto-follow' ? end : start;
+    const snapped = Math.abs(target.start - go) <= context.snap ? target.start : go;
+    const offset = Math.max(0, Math.round(target.start - snapped));
+    return {
+      ...cue,
+      end: { trigger: 'duration', duration: Math.max(0, Math.round(end - start)) },
+      nextEvent: { ...cue.nextEvent, offset },
+    };
+  }
 
   if (kind === 'move') {
     const start = anchorStartAt(cue.start, times.start + delta, options);

@@ -171,7 +171,16 @@ export default function CueInspector({
   /** a cue which moves the show on waits for Next, which becomes its GO */
   const setNextEvent = (value: string) => {
     if (value === 'auto-follow' || value === 'auto-continue') {
-      update({ nextEvent: { trigger: value, offset: cue.nextEvent?.offset ?? 0 }, goMode: 'manual' });
+      // the event whose GO comes next after the cue: the cue is drawn against it
+      const go = times ? (value === 'auto-follow' ? times.end : times.start) : 0;
+      const eventId = cue.nextEvent?.eventId ?? model.spans.find((span) => span.start >= go - 1)?.id;
+      const length = times ? times.end - times.start : 0;
+      update({
+        nextEvent: { trigger: value, offset: cue.nextEvent?.offset ?? 0, ...(eventId && { eventId }) },
+        // the length of the cue holds, its place follows the event
+        end: { trigger: 'duration', duration: Math.max(0, Math.round(length)) },
+        goMode: 'manual',
+      });
     } else {
       update({ nextEvent: null });
     }
@@ -350,6 +359,15 @@ export default function CueInspector({
         />
         {cue.nextEvent && (
           <>
+            <Select
+              aria-label='Event it starts'
+              options={eventOptions}
+              value={cue.nextEvent.eventId ?? ''}
+              onValueChange={(eventId) =>
+                eventId && cue.nextEvent && update({ nextEvent: { ...cue.nextEvent, eventId } })
+              }
+              fluid
+            />
             <label className={style.inlineField}>
               Wait
               <TimeField
@@ -359,8 +377,9 @@ export default function CueInspector({
               />
             </label>
             <span className={style.summary}>
-              Next is the GO of this cue, the following event starts{' '}
-              {cue.nextEvent.trigger === 'auto-follow' ? 'when the cue ends' : 'with the cue'}
+              Next is the GO of this cue, the event starts{' '}
+              {cue.nextEvent.trigger === 'auto-follow' ? 'when the cue ends' : 'with the cue'}, after the wait. The cue
+              stays lined up with the GO of the event
             </span>
           </>
         )}

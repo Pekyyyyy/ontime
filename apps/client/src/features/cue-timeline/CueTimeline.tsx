@@ -375,6 +375,18 @@ export default function CueTimeline({ orientation, onOrientationChange, mode, cl
     return { cue, main, mainSize, cross, isOneShot };
   };
 
+  // cues which start an event are drawn with their wait up to its GO
+  const eventLinks: { key: string; from: number; to: number; cross: number }[] = [];
+  for (const cueId in displayedCues) {
+    const nextEvent = displayedCues[cueId].nextEvent;
+    const span = nextEvent?.eventId ? model.spans.find((candidate) => candidate.id === nextEvent.eventId) : undefined;
+    const box = span ? getCueBox(cueId) : null;
+    if (!nextEvent || !span || !box) continue;
+    const isFromEnd = nextEvent.trigger === 'auto-follow' && !box.isOneShot;
+    const from = isFromEnd ? box.main + box.mainSize : box.main;
+    eventLinks.push({ key: cueId, from, to: toMain(span.start), cross: box.cross + row / 2 });
+  }
+
   const links: { key: string; path: string; kind: 'follow' | 'continue' }[] = [];
   for (const cueId in displayedCues) {
     const displayed = displayedCues[cueId];
@@ -683,6 +695,20 @@ export default function CueTimeline({ orientation, onOrientationChange, mode, cl
                   </div>
                 );
               })}
+
+              {/* the wait between a cue and the GO of the event it starts */}
+              {eventLinks.map((link) => (
+                <div
+                  key={`event-link-${link.key}`}
+                  className={style.eventLink}
+                  style={place(
+                    Math.min(link.from, link.to),
+                    Math.max(2, Math.abs(link.to - link.from)),
+                    link.cross - 1,
+                    2,
+                  )}
+                />
+              ))}
 
               {/* where the show is on the plan */}
               {live.planPosition !== null && (
