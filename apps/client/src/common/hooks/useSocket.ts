@@ -323,4 +323,5 @@ export const setCuePlayback = {
   test: (cueId: string) => sendSocket('cue', { test: cueId }),
   next: () => sendSocket('cue', 'next'),
   rearmAll: () => sendSocket('cue', 'rearm-all'),
+  panic: () => sendSocket('cue', 'panic'),
 };

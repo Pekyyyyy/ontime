@@ -6,7 +6,9 @@ import {
   getDueCues,
   getEventGoCues,
   getNextCue,
+  getNextCueInEvent,
   isOneShotCue,
+  panicCuePlayback,
   settleCuePlayback,
 } from './cuePlayback.js';
 import { resolveTimelineCues, type TimelineEventSpan } from './timelineCues.js';
@@ -125,5 +127,44 @@ describe('isOneShotCue()', () => {
   it('is a cue with no length', () => {
     expect(isOneShotCue(makeCue({ id: 'a', end: { trigger: 'duration', duration: 0 } }))).toBe(true);
     expect(isOneShotCue(makeCue({ id: 'a' }))).toBe(false);
+  });
+});
+
+describe('getNextCueInEvent()', () => {
+  const cues = toCues(
+    makeCue({ id: 'go', goMode: 'manual' }),
+    makeCue({ id: 'inside', start: { trigger: 'inside-event', eventId: 'e1', offset: 500 } }),
+    makeCue({ id: 'chained', start: { trigger: 'auto-follow', cueId: 'go', offset: 0 } }),
+    makeCue({ id: 'other', start: { trigger: 'event-go', eventId: 'e2' } }),
+  );
+  const resolved = resolveTimelineCues(cues, spans);
+
+  it('finds the first cue of the event which had no GO', () => {
+    expect(getNextCueInEvent(cues, resolved, spans[0], {})).toBe('go');
+    const played = { go: { status: 'running' as const, firedAt: 1000, endsAt: 1100 } };
+    // the chained cue runs by itself
+    expect(getNextCueInEvent(cues, resolved, spans[0], played)).toBe('inside');
+  });
+
+  it('is null once every cue of the event played', () => {
+    const played = {
+      go: { status: 'done' as const, firedAt: 1000, endsAt: 1100 },
+      inside: { status: 'running' as const, firedAt: 1500, endsAt: 1600 },
+    };
+    expect(getNextCueInEvent(cues, resolved, spans[0], played)).toBeNull();
+  });
+});
+
+describe('panicCuePlayback()', () => {
+  it('stops running cues and forgets tests', () => {
+    const playback = {
+      a: { status: 'running' as const, firedAt: 0, endsAt: 1000 },
+      b: { status: 'test' as const, firedAt: 0, endsAt: 1000 },
+      c: { status: 'done' as const, firedAt: 0, endsAt: 100 },
+    };
+    expect(panicCuePlayback(playback, 500)).toEqual({
+      a: { status: 'stopped', firedAt: 0, endsAt: 500 },
+      c: playback.c,
+    });
   });
 });

@@ -178,7 +178,7 @@ export type OffsetmodeResponse = {
 
 export type CueAction = {
   tag: 'cue';
-  payload: 'next' | 'rearm-all' | { go: string } | { rearm: string } | { test: string };
+  payload: 'next' | 'rearm-all' | 'panic' | { go: string } | { rearm: string } | { test: string };
 };
 export type CueResponse = {
   tag: 'cue';

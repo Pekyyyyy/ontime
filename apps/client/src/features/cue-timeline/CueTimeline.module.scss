@@ -481,3 +481,12 @@
     color: $white-40;
   }
 }
+
+.panic {
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.stopped {
+  background-image: repeating-linear-gradient(-45deg, transparent 0 6px, rgba($red-500, 0.35) 6px 8px);
+}

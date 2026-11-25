@@ -120,4 +120,41 @@ describe('cue service', () => {
     service.update();
     expect(emitted.length).toBe(count);
   });
+
+  it('plays the cues of the running event on Next, then lets the show move on', () => {
+    const { service, runtime } = setup({
+      first: makeCue({ id: 'first', goMode: 'manual', start: { trigger: 'inside-event', eventId: 'a', offset: 1000 } }),
+      second: makeCue({
+        id: 'second',
+        goMode: 'manual',
+        start: { trigger: 'inside-event', eventId: 'a', offset: 5000 },
+      }),
+      later: makeCue({ id: 'later', goMode: 'manual', start: { trigger: 'event-go', eventId: 'b' } }),
+    });
+    Object.assign(runtime, { now: 10_500, playback: Playback.Play, eventNowId: 'a' });
+
+    expect(service.goNextInEvent()).toBe(true);
+    expect(service.getState().cues.first.status).toBe('running');
+    expect(service.goNextInEvent()).toBe(true);
+    expect(service.getState().cues.second.status).toBe('running');
+    expect(service.goNextInEvent()).toBe(false);
+    expect(service.getState().cues.later).toBeUndefined();
+  });
+
+  it('stops running cues on panic, and their chain does not run', () => {
+    const { service, runtime } = setup({
+      one: makeCue({ id: 'one', goMode: 'manual' }),
+      follow: makeCue({ id: 'follow', start: { trigger: 'auto-follow', cueId: 'one', offset: 0 } }),
+    });
+    Object.assign(runtime, { now: 10_000, playback: Playback.Play, eventNowId: 'a' });
+    service.go('one');
+    runtime.now = 10_200;
+    service.panic();
+    expect(service.getState().cues.one).toEqual({ status: 'stopped', firedAt: 10_000, endsAt: 10_200 });
+
+    runtime.now = 12_000;
+    service.update();
+    expect(service.getState().cues.follow).toBeUndefined();
+    expect(() => service.go('one')).toThrow('rearm');
+  });
 });

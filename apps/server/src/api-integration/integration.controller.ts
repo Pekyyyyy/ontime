@@ -156,6 +156,8 @@ const actionHandlers: Record<ApiActionTag, ActionHandler> = {
     }
 
     if (payload === 'next') {
+      // the cues of the running event play before the show moves on
+      if (cueService.goNextInEvent()) return { payload: 'success' };
       return successPayloadOrError(runtimeService.startNext(), 'Unable to start next event');
     }
 
@@ -333,6 +335,10 @@ const actionHandlers: Record<ApiActionTag, ActionHandler> = {
       cueService.goNext();
       return { payload: 'success' };
     }
+    if (payload === 'panic') {
+      cueService.panic();
+      return { payload: 'success' };
+    }
     if (payload === 'rearm-all') {
       cueService.rearmAll();
       return { payload: 'success' };
@@ -342,7 +348,7 @@ const actionHandlers: Record<ApiActionTag, ActionHandler> = {
     if (typeof command.go === 'string') cueService.go(command.go);
     else if (typeof command.rearm === 'string') cueService.rearm(command.rearm);
     else if (typeof command.test === 'string') cueService.test(command.test);
-    else throw new Error('Cue command must be next, rearm-all, or one of go, rearm or test with a cue id');
+    else throw new Error('Cue command must be next, panic, rearm-all, or one of go, rearm or test with a cue id');
     return { payload: 'success' };
   },
   /* Teleprompter */

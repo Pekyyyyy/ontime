@@ -4,8 +4,9 @@ import type { TimelineCueId } from '../core/TimelineCue.type.js';
  * - running: the cue had its GO and has not reached its end
  * - done: the cue played, it needs a rearm to play again
  * - test: the cue is being tested, it does not count as played
+ * - stopped: a panic stopped the cue, it needs a rearm and the cues chained to it do not run
  */
-export type CuePlaybackStatus = 'running' | 'done' | 'test';
+export type CuePlaybackStatus = 'running' | 'done' | 'test' | 'stopped';
 
 export type CuePlaybackEntry = {
   status: CuePlaybackStatus;

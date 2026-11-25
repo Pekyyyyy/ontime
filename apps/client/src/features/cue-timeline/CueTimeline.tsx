@@ -13,7 +13,7 @@ import {
   useState,
 } from 'react';
 import { IoAdd, IoRemove } from 'react-icons/io5';
-import { LuArrowDownUp, LuArrowLeftRight, LuLink2, LuRotateCcw } from 'react-icons/lu';
+import { LuArrowDownUp, LuArrowLeftRight, LuLink2, LuOctagonX, LuRotateCcw } from 'react-icons/lu';
 
 import Button from '../../common/components/buttons/Button';
 import IconButton from '../../common/components/buttons/IconButton';
@@ -473,9 +473,20 @@ export default function CueTimeline({ orientation, onOrientationChange, mode, cl
             </Button>
           </>
         )}
+        {isLoaded && (
+          <Button
+            size='small'
+            variant='destructive'
+            className={style.panic}
+            onClick={setCuePlayback.panic}
+            data-testid='cue-panic'
+          >
+            <LuOctagonX /> Panic
+          </Button>
+        )}
         <span className={style.hint}>
           {isRunMode
-            ? 'GO plays a cue and its auto-follow and auto-continue cues · a played cue needs a rearm'
+            ? 'GO plays a cue and its chain · a played cue needs a rearm · Next plays the cues of the running event before the next event'
             : 'Drag on a lane to draw a cue · drag to move · drag edges to resize · Shift to skip snapping · Test plays a cue alone'}
         </span>
       </div>
@@ -609,7 +620,8 @@ export default function CueTimeline({ orientation, onOrientationChange, mode, cl
                       isDragged && style.dragging,
                       isOneShot && style.oneShot,
                       (entry?.status === 'running' || entry?.status === 'test') && style.running,
-                      entry?.status === 'done' && style.done,
+                      (entry?.status === 'done' || entry?.status === 'stopped') && style.done,
+                      entry?.status === 'stopped' && style.stopped,
                       cueId === live.nextCueId && style.nextCue,
                     ])}
                     style={

@@ -110,7 +110,9 @@ export function getDueCues(
     if (!times || playback[cueId]) continue;
 
     if (isChainedCue(cue)) {
-      if (hasPlayed(playback[cue.start.cueId]) && now >= times.start) due.push({ id: cueId, start: times.start });
+      const reference = playback[cue.start.cueId];
+      const hasReferenceRun = reference?.status === 'running' || reference?.status === 'done';
+      if (hasReferenceRun && now >= times.start) due.push({ id: cueId, start: times.start });
       continue;
     }
 
@@ -172,12 +174,63 @@ export function settleCuePlayback(playback: Readonly<PlaybackEntries>, now: numb
   const result: PlaybackEntries = {};
   for (const cueId in playback) {
     const entry = playback[cueId];
-    if (entry.status === 'done' || entry.endsAt > now) {
+    if (entry.status === 'done' || entry.status === 'stopped' || entry.endsAt > now) {
       result[cueId] = entry;
       continue;
     }
     changed = true;
     if (entry.status === 'running') result[cueId] = { ...entry, status: 'done' };
+  }
+  return changed ? result : (playback as PlaybackEntries);
+}
+
+/**
+ * The cue the operator's Next plays before moving to the next event
+ * - an armed cue planned to start within the running event, or started by its GO
+ * - cues chained to a cue which already ran are left out, they fire by themselves
+ * @returns null when every cue of the event had its GO
+ */
+export function getNextCueInEvent(
+  cues: Readonly<RundownCues>,
+  resolved: ResolvedTimelineCues,
+  span: { id: EntryId; start: number; end: number },
+  playback: Readonly<PlaybackEntries>,
+): TimelineCueId | null {
+  let next: TimelineCueId | null = null;
+  for (const cueId in cues) {
+    const cue = cues[cueId];
+    const times = resolved[cueId];
+    if (!times || hasPlayed(playback[cueId])) continue;
+    if (isChainedCue(cue) && hasPlayed(playback[cue.start.cueId])) continue;
+
+    const isOfEvent =
+      ('eventId' in cue.start && cue.start.eventId === span.id) ||
+      (times.start >= span.start && times.start < span.end);
+    if (!isOfEvent) continue;
+    if (next === null || times.start < resolved[next].start) next = cueId;
+  }
+  return next;
+}
+
+/**
+ * Stops every cue which is running or being tested, the stopped cues need a rearm and their chains do not run
+ * @returns the same object when nothing was running
+ */
+export function panicCuePlayback(playback: Readonly<PlaybackEntries>, now: number): PlaybackEntries {
+  let changed = false;
+  const result: PlaybackEntries = {};
+  for (const cueId in playback) {
+    const entry = playback[cueId];
+    if (entry.status === 'test') {
+      changed = true;
+      continue;
+    }
+    if (entry.status === 'running') {
+      changed = true;
+      result[cueId] = { ...entry, status: 'stopped', endsAt: now };
+      continue;
+    }
+    result[cueId] = entry;
   }
   return changed ? result : (playback as PlaybackEntries);
 }

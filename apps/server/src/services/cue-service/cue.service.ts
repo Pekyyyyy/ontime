@@ -2,14 +2,17 @@ import { CuePlayback, LogOrigin, Playback, Rundown, RundownCues, TimelineCueId, 
 import {
   type CueSchedule,
   type ResolvedTimelineCues,
+  type TimelineEventSpan,
   dayInMs,
   fireCueEntry,
   getCueSchedule,
   getDueCues,
   getEventGoCues,
   getNextCue,
+  getNextCueInEvent,
   getTimelineEventSpans,
   isChainedCue,
+  panicCuePlayback,
   resolveTimelineCues,
   settleCuePlayback,
 } from 'ontime-utils';
@@ -47,7 +50,13 @@ export class CueCommandError extends Error {}
  */
 export function createCueService({ getRundown, getRuntime, emit, log }: CueServiceDeps) {
   let state: CuePlayback = { rundownId: null, cues: {} };
-  let cache: { id: string; revision: number; cues: RundownCues; resolved: ResolvedTimelineCues } | null = null;
+  let cache: {
+    id: string;
+    revision: number;
+    cues: RundownCues;
+    spans: TimelineEventSpan[];
+    resolved: ResolvedTimelineCues;
+  } | null = null;
   let lastEventNowId: string | null = null;
   let lastPlayback: Playback | null = null;
 
@@ -55,12 +64,8 @@ export function createCueService({ getRundown, getRuntime, emit, log }: CueServi
     const rundown = getRundown();
     if (!cache || cache.id !== rundown.id || cache.revision !== rundown.revision) {
       const cues = rundown.cues ?? {};
-      cache = {
-        id: rundown.id,
-        revision: rundown.revision,
-        cues,
-        resolved: resolveTimelineCues(cues, getTimelineEventSpans(rundown)),
-      };
+      const spans = getTimelineEventSpans(rundown);
+      cache = { id: rundown.id, revision: rundown.revision, cues, spans, resolved: resolveTimelineCues(cues, spans) };
     }
     return cache;
   }
@@ -163,6 +168,23 @@ export function createCueService({ getRundown, getRuntime, emit, log }: CueServi
     go(cueId);
   }
 
+  /**
+   * The operator's Next: plays the next cue of the running event
+   * @returns false when every cue of the event had its GO, and the show should move to the next event
+   */
+  function goNextInEvent(): boolean {
+    state = reconcile();
+    const runtime = getRuntime();
+    if (!runtime.eventNowId) return false;
+    const { cues, spans, resolved } = getCues();
+    const span = spans.find((candidate) => candidate.id === runtime.eventNowId);
+    if (!span) return false;
+    const cueId = getNextCueInEvent(cues, resolved, span, state.cues);
+    if (!cueId) return false;
+    go(cueId);
+    return true;
+  }
+
   function test(cueId: TimelineCueId) {
     state = reconcile();
     if (!getCues().cues[cueId]) throw new CueCommandError(`Cue ${cueId} not found`);
@@ -180,6 +202,17 @@ export function createCueService({ getRundown, getRuntime, emit, log }: CueServi
     flush();
   }
 
+  /** stops every running cue, they and their chains stay stopped until a rearm */
+  function panic() {
+    state = reconcile();
+    const stopped = panicCuePlayback(state.cues, getRuntime().now);
+    if (stopped !== state.cues) {
+      state = { ...state, cues: stopped };
+      log('Cue panic', 'all running cues');
+    }
+    flush();
+  }
+
   function rearmAll() {
     state = { ...reconcile(), cues: {} };
     flush();
@@ -189,9 +222,11 @@ export function createCueService({ getRundown, getRuntime, emit, log }: CueServi
     update,
     go,
     goNext,
+    goNextInEvent,
     test,
     rearm,
     rearmAll,
+    panic,
     getState: () => state,
   };
 }
