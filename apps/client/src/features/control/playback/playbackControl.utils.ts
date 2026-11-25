@@ -8,6 +8,8 @@ export interface PlaybackControlInput {
   numEvents: number;
   selectedEventIndex: number | null;
   timerPhase: TimerPhase;
+  /** the running event still has a cue for Next to play */
+  hasCueTarget?: boolean;
 }
 
 export interface PlaybackControlState {
@@ -48,6 +50,7 @@ export function getPlaybackControlState({
   numEvents,
   selectedEventIndex,
   timerPhase,
+  hasCueTarget = false,
 }: PlaybackControlInput): PlaybackControlState {
   const isFirst = selectedEventIndex === 0;
   const isLast = selectedEventIndex === numEvents - 1;
@@ -55,7 +58,7 @@ export function getPlaybackControlState({
   const isRolling = playback === Playback.Roll;
 
   const playbackCan = validatePlayback(playback, timerPhase);
-  const { action: goAction, label: goLabel } = getGoAction(playback, selectedEventIndex, isLast);
+  const { action: goAction, label: goLabel } = getGoAction(playback, selectedEventIndex, isLast && !hasCueTarget);
 
   return {
     isPlaying: playback === Playback.Play,

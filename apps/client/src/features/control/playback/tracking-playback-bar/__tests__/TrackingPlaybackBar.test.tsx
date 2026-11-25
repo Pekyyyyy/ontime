@@ -16,6 +16,8 @@ vi.mock('../../../../../common/hooks/useSocket', async (importOriginal) => {
   };
 });
 
+vi.mock('../../useGoTarget', () => ({ useGoTarget: () => null }));
+
 function press(code: string, key: string, repeat = false) {
   act(() => {
     document.body.dispatchEvent(new KeyboardEvent('keydown', { code, key, repeat, bubbles: true }));

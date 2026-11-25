@@ -4,6 +4,7 @@ import { IoPause, IoPlay, IoPlaySkipBack, IoPlaySkipForward, IoReload, IoStop } 
 import { setPlayback } from '../../../../common/hooks/useSocket';
 import { getPlaybackControlState } from '../playbackControl.utils';
 import TapButton from '../tap-button/TapButton';
+import { useGoTarget } from '../useGoTarget';
 
 import style from './PlaybackButtons.module.scss';
 
@@ -15,6 +16,7 @@ interface PlaybackButtonsProps {
 }
 
 export default function PlaybackButtons({ playback, numEvents, selectedEventIndex, timerPhase }: PlaybackButtonsProps) {
+  const goTarget = useGoTarget(selectedEventIndex);
   const {
     isPlaying,
     isPaused,
@@ -34,12 +36,27 @@ export default function PlaybackButtons({ playback, numEvents, selectedEventInde
     numEvents,
     selectedEventIndex,
     timerPhase,
+    hasCueTarget: goTarget?.kind === 'cue',
   });
+  const showTarget = goLabel === 'Next' && goTarget !== null;
 
   return (
     <div className={style.buttonContainer}>
-      <TapButton disabled={disableGo} onClick={goAction} aspect='fill' className={style.go}>
-        {goLabel}
+      <TapButton
+        disabled={disableGo}
+        onClick={goAction}
+        aspect='fill'
+        className={style.go}
+        title={showTarget ? goTarget.description : undefined}
+      >
+        <span className={style.goContent}>
+          {goLabel}
+          {showTarget && (
+            <span className={style.goTarget} data-testid='go-target'>
+              {goTarget.text}
+            </span>
+          )}
+        </span>
       </TapButton>
       <div className={style.playbackContainer}>
         <TapButton onClick={setPlayback.start} disabled={disableStart} theme={Playback.Play} active={isPlaying}>

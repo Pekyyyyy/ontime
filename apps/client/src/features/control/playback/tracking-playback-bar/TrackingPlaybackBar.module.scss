@@ -144,3 +144,12 @@ $element-height: 4.5rem; // matches go button height in PlaybackButtons
     display: none;
   }
 }
+
+.goTarget {
+  max-width: 7.5rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: calc(1rem - 3px);
+  opacity: 0.85;
+}

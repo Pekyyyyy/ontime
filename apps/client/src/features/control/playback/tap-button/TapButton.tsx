@@ -13,15 +13,17 @@ interface TapButtonProps {
   theme?: Playback | 'neutral';
   active?: boolean;
   className?: string;
+  title?: string;
 }
 
 const TapButton = forwardRef((props: PropsWithChildren<TapButtonProps>, ref: ForwardedRef<HTMLButtonElement>) => {
-  const { children, disabled, onClick, theme = 'neutral', aspect = 'normal', active, className } = props;
+  const { children, disabled, onClick, theme = 'neutral', aspect = 'normal', active, className, title } = props;
 
   return (
     <button
       className={cx([style.tapButton, className, style[theme], style[aspect], active && style.active])}
       disabled={disabled}
+      title={title}
       type='button'
       onClick={onClick}
       ref={ref}
