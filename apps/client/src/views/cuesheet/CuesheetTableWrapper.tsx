@@ -1,10 +1,15 @@
 import { MaybeString, ProjectRundown } from 'ontime-types';
 import { memo, use, useMemo } from 'react';
+import { LuChartGantt } from 'react-icons/lu';
 
+import Button from '../../common/components/buttons/Button';
 import Select from '../../common/components/select/Select';
 import { PresetContext } from '../../common/context/PresetContext';
 import { useRundownScope } from '../../common/context/RundownScopeContext';
 import useCustomFields from '../../common/hooks-query/useCustomFields';
+import { cx } from '../../common/utils/styleUtils';
+import CueTimeline from '../../features/cue-timeline/CueTimeline';
+import { useCueTimelinePanel } from '../../features/cue-timeline/useCueTimelinePanel';
 import { AppMode } from '../../ontimeConfig';
 import CuesheetDnd from './cuesheet-dnd/CuesheetDnd';
 import { makeCuesheetColumns } from './cuesheet-table/cuesheet-table-elements/cuesheetColsFactory';
@@ -32,6 +37,7 @@ function CuesheetTableWrapper({
   const { isLoaded } = useRundownScope();
   const { cuesheetMode, setCuesheetMode } = useApplyCuesheetPolicy(preset, { canRunMode: isLoaded });
   const { data: customFields } = useCustomFields();
+  const timelinePanel = useCueTimelinePanel('cuesheet', 'horizontal');
 
   const columns = useMemo(
     () => makeCuesheetColumns(customFields, cuesheetMode, preset),
@@ -47,6 +53,13 @@ function CuesheetTableWrapper({
         setCuesheetMode={setCuesheetMode}
         insertElement={
           <>
+            <Button
+              variant={timelinePanel.isOpen ? 'primary' : 'subtle'}
+              onClick={() => timelinePanel.setOpen(!timelinePanel.isOpen)}
+              aria-pressed={timelinePanel.isOpen}
+            >
+              <LuChartGantt /> Cue timeline
+            </Button>
             <RundownSelect
               cuesheetMode={cuesheetMode}
               selectedRundownId={selectedRundownId}
@@ -57,6 +70,18 @@ function CuesheetTableWrapper({
           </>
         }
       />
+      {timelinePanel.isOpen && (
+        <div
+          className={cx([styles.timelinePanel, timelinePanel.orientation === 'vertical' && styles.timelinePanelSide])}
+          data-testid='cuesheet-timeline'
+        >
+          <CueTimeline
+            orientation={timelinePanel.orientation}
+            onOrientationChange={timelinePanel.setOrientation}
+            readOnly={cuesheetMode === AppMode.Run}
+          />
+        </div>
+      )}
     </CuesheetDnd>
   );
 }

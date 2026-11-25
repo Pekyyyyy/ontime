@@ -9,12 +9,24 @@
 
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: 3.5rem auto auto 1fr;
+  grid-template-rows: 3.5rem auto auto auto 1fr;
   grid-template-areas:
     'overview'
     'progress'
     'settings'
+    'timeline'
     'table';
+
+  // a timeline with time running down sits beside the table, like the rows it follows
+  &:has(.timelinePanelSide) {
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 35%);
+    grid-template-rows: 3.5rem auto auto 1fr;
+    grid-template-areas:
+      'overview overview'
+      'progress progress'
+      'settings settings'
+      'table timeline';
+  }
   color: $ui-white;
   padding: safe-area-padding(0.5rem, 0.5rem, 1rem);
 }
@@ -23,4 +35,24 @@
   flex: 1 1 8rem;
   min-width: 0;
   max-width: 20rem;
+}
+
+.timelinePanel {
+  grid-area: timeline;
+  height: 40vh;
+  min-height: 10rem;
+  max-height: 80vh;
+  margin-bottom: 0.5rem;
+  resize: vertical;
+  overflow: hidden;
+  border: 1px solid $white-7;
+  border-radius: 4px;
+}
+
+.timelinePanelSide {
+  height: auto;
+  max-height: none;
+  margin-bottom: 0;
+  margin-left: 0.5rem;
+  resize: none;
 }

@@ -6,6 +6,7 @@ import {
   ProjectRundownsList,
   RenumberCues,
   Rundown,
+  RundownCues,
   RundownImportPayload,
   TransientEventPayload,
 } from 'ontime-types';
@@ -125,6 +126,13 @@ export type BatchEditEntry = {
  */
 export async function putBatchEditEvents(rundownId: RundownId, data: BatchEditEntry): Promise<AxiosResponse<Rundown>> {
   return axios.put(`${rundownPath}/${rundownId}/batch`, data);
+}
+
+/**
+ * HTTP request to replace the timeline cues of a rundown
+ */
+export async function putTimelineCues(rundownId: RundownId, cues: RundownCues): Promise<AxiosResponse<Rundown>> {
+  return axios.put(`${rundownPath}/${rundownId}/cues`, { cues });
 }
 
 /**

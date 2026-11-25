@@ -100,9 +100,9 @@ export function useEntryActions(scopedRundownId: string) {
    * Responses can land out of order, the one for an earlier mutation must not undo a later one
    */
   const applyRundownResponse = useCallback(
-    (queryKey: QueryKey, { id, title, order, flatOrder, entries, revision }: Rundown) => {
+    (queryKey: QueryKey, { id, title, order, flatOrder, entries, revision, cues }: Rundown) => {
       if (isStaleRundown(queryClient.getQueryData<Rundown>(queryKey), revision)) return;
-      queryClient.setQueryData<Rundown>(queryKey, { id, title, order, flatOrder, entries, revision });
+      queryClient.setQueryData<Rundown>(queryKey, { id, title, order, flatOrder, entries, revision, cues });
     },
     [queryClient],
   );
@@ -335,6 +335,7 @@ export function useEntryActions(scopedRundownId: string) {
           title: previousData.title,
           order: previousData.order,
           flatOrder: previousData.flatOrder,
+          cues: previousData.cues,
           entries: newRundown,
           revision: -1,
         });
@@ -542,6 +543,7 @@ export function useEntryActions(scopedRundownId: string) {
           title: previousRundown.title,
           order: previousRundown.order,
           flatOrder: previousRundown.flatOrder,
+          cues: previousRundown.cues,
           entries: newRundown,
           revision: -1,
         });
@@ -640,6 +642,7 @@ export function useEntryActions(scopedRundownId: string) {
           order,
           flatOrder,
           entries,
+          cues: previousData.cues,
           revision: -1,
         });
       }
@@ -985,6 +988,7 @@ export function useEntryActions(scopedRundownId: string) {
           title: previousData.title,
           order: previousData.order,
           flatOrder: previousData.flatOrder,
+          cues: previousData.cues,
           entries: newRundown,
           revision: -1,
         });
