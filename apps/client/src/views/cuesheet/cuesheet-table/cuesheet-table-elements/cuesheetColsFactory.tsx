@@ -1,4 +1,12 @@
-import { CustomFields, OntimeEntry, TimeStrategy, URLPreset, isOntimeDelay, isOntimeEvent } from 'ontime-types';
+import {
+  CustomField,
+  CustomFields,
+  OntimeEntry,
+  TimeStrategy,
+  URLPreset,
+  isOntimeDelay,
+  isOntimeEvent,
+} from 'ontime-types';
 import { millisToString } from 'ontime-utils';
 import { useCallback } from 'react';
 
@@ -209,6 +217,21 @@ function MakeFlagField({ row }: CuesheetCellContext) {
   return <FlagCell />;
 }
 
+function getCustomFieldCell(type: CustomField['type']) {
+  if (type === 'cue') return MakeCueField;
+  if (type === 'image') return LazyImage;
+  return MakeCustomField;
+}
+
+/**
+ * A field set as cues shows the cues of each event, the cues are edited in the timeline
+ */
+function MakeCueField({ row, column }: CuesheetCellContext) {
+  const event = row.original;
+  if (!isOntimeEvent(event)) return null;
+  return <EventCueChips eventId={event.id} track={column.id} hideTrack inCell />;
+}
+
 function MakeCustomField({ row, column, table }: CuesheetCellContext) {
   const update = useCallback(
     (newValue: string) => {
@@ -358,7 +381,7 @@ export function makeCuesheetColumns(
       accessorKey: key,
       id: key,
       header: customFields[key].label,
-      cell: customFields[key].type === 'text' ? MakeCustomField : LazyImage,
+      cell: getCustomFieldCell(customFields[key].type),
       size: 250,
       minSize: 75,
       meta: {

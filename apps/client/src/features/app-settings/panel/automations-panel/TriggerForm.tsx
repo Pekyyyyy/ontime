@@ -8,6 +8,7 @@ import Button from '../../../../common/components/buttons/Button';
 import Input from '../../../../common/components/input/input/Input';
 import Modal from '../../../../common/components/modal/Modal';
 import Select from '../../../../common/components/select/Select';
+import useCustomFields from '../../../../common/hooks-query/useCustomFields';
 import * as Panel from '../../panel-utils/PanelUtils';
 import { cycles } from './automationUtils';
 
@@ -23,6 +24,7 @@ interface TriggerFormProps {
 }
 
 export default function TriggerForm({ automations, trigger, onCancel, postSubmit }: TriggerFormProps) {
+  const { data: customFields } = useCustomFields();
   const {
     handleSubmit,
     register,
@@ -36,6 +38,7 @@ export default function TriggerForm({ automations, trigger, onCancel, postSubmit
       title: trigger?.title,
       trigger: trigger?.trigger ?? (cycles[0].value as TimerLifeCycle | undefined),
       automationId: trigger?.automationId ?? automations?.[Object.keys(automations)[0]]?.id,
+      cueTrack: trigger?.cueTrack ?? '',
     },
     resetOptions: {
       keepDirtyValues: true,
@@ -76,6 +79,15 @@ export default function TriggerForm({ automations, trigger, onCancel, postSubmit
 
   const canSubmit = isDirty && isValid;
 
+  // cue triggers can keep to the cues of one field, eg: only the QLab cues
+  const isCueTrigger = watch('trigger') === TimerLifeCycle.onCueGo;
+  const cueFieldSelect = [
+    { value: '', label: 'Any cue' },
+    ...Object.entries(customFields)
+      .filter(([, field]) => field.type === 'cue' || field.type === 'text')
+      .map(([key, field]) => ({ value: key, label: field.label })),
+  ];
+
   return (
     <Modal
       isOpen
@@ -110,6 +122,19 @@ export default function TriggerForm({ automations, trigger, onCancel, postSubmit
               />
               <Panel.Error>{errors.trigger?.message}</Panel.Error>
             </label>
+            {isCueTrigger && (
+              <label>
+                <Panel.Description>Cues on</Panel.Description>
+                <Select
+                  value={watch('cueTrack') ?? ''}
+                  onValueChange={(value: string | null) => {
+                    setValue('cueTrack', value ?? '', { shouldDirty: true });
+                  }}
+                  options={cueFieldSelect}
+                  aria-label='Cue field'
+                />
+              </label>
+            )}
             <label>
               <Panel.Description>Automation</Panel.Description>
               <Select

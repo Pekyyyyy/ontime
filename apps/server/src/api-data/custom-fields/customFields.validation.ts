@@ -11,7 +11,7 @@ export const validateCustomField = [
     .custom((value) => {
       return checkRegex.isAlphanumericWithSpace(value);
     }),
-  body('type').isIn(['text', 'image']),
+  body('type').isIn(['text', 'image', 'cue']),
   body('colour').isString().trim(),
 
   requestValidationFunction,
@@ -26,7 +26,7 @@ export const validateEditCustomField = [
     .custom((value) => {
       return checkRegex.isAlphanumericWithSpace(value);
     }),
-  body('type').isIn(['text', 'image']),
+  body('type').isIn(['text', 'image', 'cue']),
   body('colour').isString().trim(),
 
   requestValidationFunction,

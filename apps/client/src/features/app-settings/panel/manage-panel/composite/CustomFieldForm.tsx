@@ -105,14 +105,28 @@ export default function CustomFieldForm({
             <Panel.Description>Type</Panel.Description>
             <RadioGroup
               orientation='horizontal'
-              disabled={isEditMode}
+              // a text field can become a lane of cues and back, an image stays an image
+              disabled={isEditMode && initialType === 'image'}
               onValueChange={(value) => setValue('type', value, { shouldDirty: true })}
               value={watch('type')}
-              items={[
-                { value: 'text', label: 'Text' },
-                { value: 'image', label: 'Image' },
-              ]}
+              items={
+                isEditMode
+                  ? [
+                      { value: 'text', label: 'Text' },
+                      { value: 'cue', label: 'Cues' },
+                    ]
+                  : [
+                      { value: 'text', label: 'Text' },
+                      { value: 'cue', label: 'Cues' },
+                      { value: 'image', label: 'Image' },
+                    ]
+              }
             />
+            {watch('type') === 'cue' && (
+              <Panel.Description>
+                Each event shows its cues on this field, each cue with its own name, edited in the cue timeline
+              </Panel.Description>
+            )}
           </div>
           <div className={style.twoCols}>
             <label>

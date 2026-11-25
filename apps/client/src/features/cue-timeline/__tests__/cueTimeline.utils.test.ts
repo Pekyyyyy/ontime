@@ -19,7 +19,8 @@ const spans = [
 const customFields: CustomFields = {
   camera: { type: 'text', colour: '#f00', label: 'Camera' },
   image: { type: 'image', colour: '', label: 'Image' },
-  lights: { type: 'text', colour: '', label: 'Lights' },
+  lights: { type: 'cue', colour: '', label: 'Lights' },
+  notes: { type: 'text', colour: '', label: 'Notes' },
 };
 
 function makeCue(patch: Partial<TimelineCue> & Pick<TimelineCue, 'id'>): TimelineCue {
@@ -37,7 +38,7 @@ function makeCue(patch: Partial<TimelineCue> & Pick<TimelineCue, 'id'>): Timelin
 }
 
 describe('makeTimelineModelFromSpans()', () => {
-  it('makes a lane for each text custom field, stacking rows', () => {
+  it('makes a lane for each cue field, and text fields holding cues, stacking rows', () => {
     const cues: RundownCues = {
       a: makeCue({ id: 'a' }),
       b: makeCue({ id: 'b', start: { trigger: 'auto-continue', cueId: 'a', offset: 0 } }),

@@ -17,6 +17,8 @@ export const cycles: CycleLabel[] = [
   { label: lifecycleLabels.onFinish, value: TimerLifeCycle.onFinish },
   { label: lifecycleLabels.onWarning, value: TimerLifeCycle.onWarning },
   { label: lifecycleLabels.onDanger, value: TimerLifeCycle.onDanger },
+  { label: lifecycleLabels.onCueGo, value: TimerLifeCycle.onCueGo },
+  { label: lifecycleLabels.onCuePanic, value: TimerLifeCycle.onCuePanic },
 ];
 
 export type OutputErrors = Partial<Record<string, { message?: string }>>;

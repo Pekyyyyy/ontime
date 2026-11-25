@@ -27,10 +27,40 @@ const periodicCycles = new Set<TimerLifeCycle>([TimerLifeCycle.onUpdate, TimerLi
  * Exposes a method for triggering actions based on a TimerLifeCycle event
  */
 export function triggerAutomations(cycle: TimerLifeCycle) {
+  runAutomations(cycle);
+}
+
+/** what an automation can read about the cue which fired it, eg: {{cue.label}} or {{cue.event.custom.qlab}} */
+export type CueAutomationData = {
+  id: string;
+  label: string;
+  note: string;
+  track: string;
+  trackLabel: string;
+  /** go for a GO in the show, test for a test */
+  status: 'go' | 'test';
+  /** the event the cue plays in, with its custom fields */
+  event: { id: string; cue: string; title: string; custom: Record<string, string> } | null;
+};
+
+/**
+ * Runs the automations of a timeline cue
+ * Triggers can keep to the cues of one custom field
+ */
+export function triggerCueAutomations(
+  cycle: TimerLifeCycle.onCueGo | TimerLifeCycle.onCuePanic,
+  cue?: CueAutomationData,
+) {
+  runAutomations(cycle, cue);
+}
+
+function runAutomations(cycle: TimerLifeCycle, cue?: CueAutomationData) {
   if (!getAutomationsEnabled()) {
     return;
   }
-  const store = eventStore.poll();
+  const runtimeStore = eventStore.poll();
+  // the cue joins the data which templates and filters read
+  const store = (cue ? { ...runtimeStore, cue } : runtimeStore) as RuntimeStore;
 
   let triggers = getAutomationTriggers();
 
@@ -40,7 +70,9 @@ export function triggerAutomations(cycle: TimerLifeCycle) {
   }
 
   // note: there are no onStop triggers in event
-  const filteredTrigger = triggers.filter((trigger) => trigger.trigger === cycle);
+  const filteredTrigger = triggers.filter(
+    (trigger) => trigger.trigger === cycle && (!trigger.cueTrack || !cue || trigger.cueTrack === cue.track),
+  );
   if (filteredTrigger.length === 0) {
     return;
   }

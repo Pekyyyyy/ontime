@@ -67,7 +67,11 @@ export function makeTimelineModelFromSpans(
   customFields: CustomFields,
 ): TimelineModel {
   const resolved = resolveTimelineCues(cues, spans);
-  const trackKeys = Object.keys(customFields).filter((key) => customFields[key].type === 'text');
+  // lanes are the fields set as cues, and text fields which hold cues from before fields had a type for them
+  const tracksWithCues = new Set(Object.values(cues).map((cue) => cue.track));
+  const trackKeys = Object.keys(customFields).filter(
+    (key) => customFields[key].type === 'cue' || (customFields[key].type === 'text' && tracksWithCues.has(key)),
+  );
   const layout = layoutTimelineCues(cues, resolved, trackKeys);
 
   let firstRow = 0;

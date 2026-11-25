@@ -29,6 +29,8 @@ export type Trigger = {
   title: string;
   trigger: TimerLifeCycle;
   automationId: AutomationId;
+  /** for cue triggers, only the cues on this custom field, any cue when empty */
+  cueTrack?: string;
 };
 
 export type TriggerDTO = Omit<Trigger, 'id'>;

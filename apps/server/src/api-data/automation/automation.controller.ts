@@ -33,6 +33,7 @@ export async function postTrigger(req: Request, res: Response<Trigger>) {
     title: req.body.title,
     trigger: req.body.trigger,
     automationId: req.body.automationId,
+    ...(typeof req.body.cueTrack === 'string' && { cueTrack: req.body.cueTrack }),
   });
   res.status(201).send(automation);
 }
@@ -43,6 +44,7 @@ export async function putTrigger(req: Request, res: Response<Trigger>) {
     title: req.body.title ?? undefined,
     trigger: req.body.trigger ?? undefined,
     automationId: req.body.automationId ?? undefined,
+    ...(typeof req.body.cueTrack === 'string' && { cueTrack: req.body.cueTrack }),
   });
   res.status(200).send(automation);
 }
