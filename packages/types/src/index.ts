@@ -81,6 +81,7 @@ export type {
   TimelineCue,
   TimelineCueEnd,
   TimelineCueEndTrigger,
+  TimelineCueGoMode,
   TimelineCueId,
   TimelineCueStart,
   TimelineCueStartTrigger,
@@ -139,6 +140,7 @@ export type { RundownState } from './definitions/runtime/RundownState.type.js';
 export type { Offset } from './definitions/runtime/Offset.type.js';
 export { OffsetMode } from './definitions/runtime/Offset.type.js';
 export type { RuntimeStore } from './definitions/runtime/RuntimeStore.type.js';
+export type { CuePlayback, CuePlaybackEntry, CuePlaybackStatus } from './definitions/runtime/CuePlayback.type.js';
 export { defaultTeleprompterSpeed, runtimeStorePlaceholder } from './definitions/runtime/RuntimeStore.js';
 export type {
   TeleprompterBlackout,

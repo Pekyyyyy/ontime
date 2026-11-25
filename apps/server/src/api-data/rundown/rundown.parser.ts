@@ -277,6 +277,8 @@ export function parseTimelineCues(data: unknown, emitError?: ErrorEmitter): Rund
       colour: typeof raw.colour === 'string' ? raw.colour : '',
       start,
       end,
+      goMode: raw.goMode === 'manual' ? 'manual' : 'auto',
+      followsDelay: typeof raw.followsDelay === 'boolean' ? raw.followsDelay : true,
     };
     cues[key] = cue;
   }

@@ -330,6 +330,16 @@ export function sanitiseTimelineCues(
     }
   }
 
+  // a one-shot cue has no length, a cue starting with it starts after it: it is an auto-follow
+  for (const cueId in result) {
+    const cue = result[cueId];
+    if (cue.start.trigger !== 'auto-continue') continue;
+    const reference = result[cue.start.cueId];
+    if (reference && reference.end.trigger === 'duration' && reference.end.duration === 0) {
+      result[cueId] = { ...cue, start: { ...cue.start, trigger: 'auto-follow' } };
+    }
+  }
+
   return result;
 }
 

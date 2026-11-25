@@ -225,6 +225,8 @@ export function makeCueAt(
     colour: '',
     start: { trigger: 'event-go', eventId: span.id },
     end: { trigger: 'duration', duration: 0 },
+    goMode: 'auto',
+    followsDelay: true,
   };
   const start = anchorStartAt({ trigger: 'event-go', eventId: span.id }, time, { spans, resolved: {}, snap });
   const startTime = resolveTimelineCues({ draft: { ...draftCue, start } }, spans).draft?.start ?? time;
@@ -238,7 +240,30 @@ export function makeCueAt(
     colour: '',
     start,
     end: next ? { trigger: 'event-go', eventId: next.id } : { trigger: 'duration', duration: MILLIS_PER_MINUTE },
+    goMode: 'auto',
+    followsDelay: true,
   };
+}
+
+/**
+ * Makes a new cue drawn between two points in time
+ * It starts with the event at its start, and lasts as long as it was drawn
+ * @returns null when the drawn length is too short to mean a cue
+ */
+export function makeCueBetween(
+  track: CustomFieldKey,
+  from: number,
+  to: number,
+  spans: TimelineEventSpan[],
+  snap: number,
+): TimelineCue | null {
+  const cue = makeCueAt(track, from, spans, snap);
+  if (!cue) return null;
+  const startTime = resolveTimelineCues({ [cue.id]: cue }, spans)[cue.id]?.start ?? from;
+  const end = snap > 0 ? Math.round(to / snap) * snap : to;
+  const duration = Math.round(end - startTime);
+  if (duration < Math.max(1000, snap)) return null;
+  return { ...cue, end: { trigger: 'duration', duration } };
 }
 
 /**
@@ -261,6 +286,8 @@ export function makeLinkedCue(
     colour: '',
     start: { trigger, cueId: reference.id, offset: 0 },
     end: { trigger: 'duration', duration },
+    goMode: 'auto',
+    followsDelay: true,
   };
 }
 

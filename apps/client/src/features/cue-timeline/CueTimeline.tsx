@@ -1,5 +1,5 @@
 import { OntimeEvent, RundownCues, TimelineCue, TimelineCueId, isOntimeEvent } from 'ontime-types';
-import { getTimelineEventSpans, millisToString } from 'ontime-utils';
+import { getTimelineEventSpans, isOneShotCue, millisToString } from 'ontime-utils';
 import {
   CSSProperties,
   KeyboardEvent,
@@ -13,13 +13,17 @@ import {
   useState,
 } from 'react';
 import { IoAdd, IoRemove } from 'react-icons/io5';
-import { LuArrowDownUp, LuArrowLeftRight, LuLink2 } from 'react-icons/lu';
+import { LuArrowDownUp, LuArrowLeftRight, LuLink2, LuRotateCcw } from 'react-icons/lu';
 
+import Button from '../../common/components/buttons/Button';
 import IconButton from '../../common/components/buttons/IconButton';
 import { useEntryActionsContext } from '../../common/context/EntryActionsContext';
+import { useRundownScope } from '../../common/context/RundownScopeContext';
 import useCustomFields from '../../common/hooks-query/useCustomFields';
 import useRundown from '../../common/hooks-query/useRundown';
+import { setCuePlayback } from '../../common/hooks/useSocket';
 import { cx } from '../../common/utils/styleUtils';
+import { AppMode } from '../../ontimeConfig';
 import { useEventSelection } from '../rundown/useEventSelection';
 import CueInspector from './CueInspector';
 import {
@@ -32,10 +36,12 @@ import {
   getCueColour,
   getRulerStep,
   makeCueAt,
+  makeCueBetween,
   makeTimelineModelFromSpans,
   removeCue,
   snapToGrid,
 } from './cueTimeline.utils';
+import { useCueLive } from './useCueLive';
 import { useTimelineCueActions } from './useTimelineCueActions';
 
 import style from './CueTimeline.module.scss';
@@ -50,6 +56,8 @@ const eventLaneSize = { horizontal: 44, vertical: 110 };
 const rowSize = { horizontal: 30, vertical: 84 };
 /** how far, in pixels, a time snaps to an event GO */
 const goSnapPx = 8;
+/** a one-shot cue has no length, it shows long enough to read its name */
+const oneShotSize = 96;
 const minZoom = 0.5;
 const maxZoom = 200;
 
@@ -72,18 +80,30 @@ type DragState =
       delta: number;
       moved: boolean;
       noSnap: boolean;
+    }
+  | {
+      target: 'create';
+      track: string;
+      originMain: number;
+      delta: number;
+      moved: boolean;
+      noSnap: boolean;
     };
 
 interface CueTimelineProps {
   orientation: TimelineOrientation;
   onOrientationChange?: (orientation: TimelineOrientation) => void;
-  /** shows the cues without allowing edits, eg: in run mode */
-  readOnly?: boolean;
+  /** edit mode edits and tests cues, run mode plays them */
+  mode: AppMode;
   className?: string;
 }
 
-export default function CueTimeline({ orientation, onOrientationChange, readOnly, className }: CueTimelineProps) {
+export default function CueTimeline({ orientation, onOrientationChange, mode, className }: CueTimelineProps) {
+  const isRunMode = mode === AppMode.Run;
+  const readOnly = isRunMode;
   const { data: rundown } = useRundown();
+  const { isLoaded } = useRundownScope();
+  const live = useCueLive(rundown, isLoaded);
   const { data: customFields } = useCustomFields();
   const { updateEntry } = useEntryActionsContext();
   const { setCues } = useTimelineCueActions();
@@ -138,6 +158,14 @@ export default function CueTimeline({ orientation, onOrientationChange, readOnly
       const previewCues = { ...cues, [cue.id]: next };
       return { cue: next, model: makeTimelineModelFromSpans(baseModel.spans, previewCues, customFields) };
     }
+    if (drag.target === 'create') {
+      const from = baseModel.rangeStart + (drag.originMain - mainOffset) / pxPerMs;
+      const to = from + delta;
+      const cue = makeCueBetween(drag.track, Math.min(from, to), Math.max(from, to), baseModel.spans, snapMs);
+      if (!cue) return null;
+      const previewCues = { ...cues, [cue.id]: cue };
+      return { cue, model: makeTimelineModelFromSpans(baseModel.spans, previewCues, customFields) };
+    }
     const event = events[drag.id];
     if (!event) return null;
     const patch = dragEvent(event, drag.kind, delta);
@@ -147,7 +175,7 @@ export default function CueTimeline({ orientation, onOrientationChange, readOnly
       return { ...span, start, end: start + (patch.duration ?? event.duration) };
     });
     return { patch, model: makeTimelineModelFromSpans(spans, cues, customFields) };
-  }, [drag, cues, events, baseModel, customFields, grid, snapMs]);
+  }, [drag, cues, events, baseModel, customFields, grid, snapMs, mainOffset, pxPerMs]);
 
   const model: TimelineModel = preview?.model ?? baseModel;
   // the range only changes when a drag ends, so the canvas does not move under the pointer
@@ -223,7 +251,9 @@ export default function CueTimeline({ orientation, onOrientationChange, readOnly
     const distance = pointer.main - drag.originMain;
     const moved = drag.moved || Math.abs(distance) > 3;
     const delta = distance / pxPerMs;
-    if (drag.target === 'cue') {
+    if (drag.target === 'create') {
+      setDrag({ ...drag, delta, moved, noSnap: event.shiftKey });
+    } else if (drag.target === 'cue') {
       const track = drag.kind === 'move' ? (getTrackAt(pointer.cross)?.key ?? drag.track) : drag.track;
       setDrag({ ...drag, delta, moved: moved || track !== drag.track, track, noSnap: event.shiftKey });
     } else {
@@ -242,11 +272,33 @@ export default function CueTimeline({ orientation, onOrientationChange, readOnly
       return;
     }
 
-    if (current.target === 'cue' && preview?.cue) {
+    if (current.target === 'create' && preview?.cue) {
+      void setCues({ ...cues, [preview.cue.id]: preview.cue });
+      setSelectedCueId(preview.cue.id);
+    } else if (current.target === 'cue' && preview?.cue) {
       void setCues({ ...cues, [preview.cue.id]: preview.cue });
     } else if (current.target === 'event' && preview?.patch) {
       void updateEntry(preview.patch);
     }
+  };
+  /** in edit mode, dragging over an empty part of a lane draws a new cue */
+  const startCreateDrag = (event: PointerEvent<HTMLDivElement>) => {
+    const isBackground = event.target === event.currentTarget || (event.target as HTMLElement).dataset.lane;
+    if (!isBackground) return;
+    setSelectedCueId(null);
+    if (event.button !== 0 || readOnly) return;
+    const pointer = getPointer(event);
+    const track = getTrackAt(pointer.cross);
+    if (!track || pointer.main < mainOffset) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDrag({
+      target: 'create',
+      track: track.key,
+      originMain: pointer.main,
+      delta: 0,
+      moved: false,
+      noSnap: event.shiftKey,
+    });
   };
   // #endregion pointer handling
 
@@ -308,21 +360,24 @@ export default function CueTimeline({ orientation, onOrientationChange, readOnly
     Object.values(events).map((event) => [event.id, event.cue ? `${event.cue} ${event.title}` : event.title]),
   );
 
+  const displayedCues: RundownCues = preview?.cue ? { ...cues, [preview.cue.id]: preview.cue } : cues;
+
   const getCueBox = (cueId: TimelineCueId) => {
-    const cue = preview?.cue?.id === cueId ? preview.cue : cues[cueId];
+    const cue = displayedCues[cueId];
     const times = model.resolved[cueId];
     const track = model.tracks.find((candidate) => candidate.key === cue?.track);
     if (!cue || !times || !track) return null;
     const rowIndex = track.firstRow + (model.layout.rows[cueId] ?? 0);
     const main = toMain(times.start);
-    const mainSize = Math.max(6, (times.end - times.start) * pxPerMs);
+    const isOneShot = isOneShotCue(cue);
+    const mainSize = isOneShot ? oneShotSize : Math.max(6, (times.end - times.start) * pxPerMs);
     const cross = crossOffset + eventLane + rowIndex * row;
-    return { cue, main, mainSize, cross };
+    return { cue, main, mainSize, cross, isOneShot };
   };
 
   const links: { key: string; path: string; kind: 'follow' | 'continue' }[] = [];
-  for (const cueId in cues) {
-    const displayed = preview?.cue?.id === cueId ? preview.cue : cues[cueId];
+  for (const cueId in displayedCues) {
+    const displayed = displayedCues[cueId];
     if (displayed.start.trigger !== 'auto-follow' && displayed.start.trigger !== 'auto-continue') continue;
     const box = getCueBox(cueId);
     const reference = getCueBox(displayed.start.cueId);
@@ -330,7 +385,8 @@ export default function CueTimeline({ orientation, onOrientationChange, readOnly
     const childCross = box.cross + row / 2;
     const referenceCross = reference.cross + row / 2;
     if (displayed.start.trigger === 'auto-follow') {
-      const from = reference.main + reference.mainSize;
+      // a one-shot has no end, its follow starts from its GO
+      const from = reference.isOneShot ? reference.main : reference.main + reference.mainSize;
       const to = box.main;
       if (childCross === referenceCross) {
         // cues in the same row are joined by an arc over their edge, so that touching cues still show the link
@@ -407,8 +463,20 @@ export default function CueTimeline({ orientation, onOrientationChange, readOnly
             {isHorizontal ? <LuArrowDownUp /> : <LuArrowLeftRight />}
           </IconButton>
         )}
+        {isRunMode && isLoaded && (
+          <>
+            <Button size='small' variant='primary' onClick={setCuePlayback.next} data-testid='cue-go-next'>
+              GO next cue
+            </Button>
+            <Button size='small' onClick={setCuePlayback.rearmAll}>
+              <LuRotateCcw /> Rearm all
+            </Button>
+          </>
+        )}
         <span className={style.hint}>
-          Double-click a lane to add a cue · drag to move · drag edges to resize · Shift to skip snapping
+          {isRunMode
+            ? 'GO plays a cue and its auto-follow and auto-continue cues · a played cue needs a rearm'
+            : 'Drag on a lane to draw a cue · drag to move · drag edges to resize · Shift to skip snapping · Test plays a cue alone'}
         </span>
       </div>
       <div className={style.body}>
@@ -431,14 +499,15 @@ export default function CueTimeline({ orientation, onOrientationChange, readOnly
                 isHorizontal ? { width: mainLength, height: crossLength } : { height: mainLength, width: crossLength }
               }
               onDoubleClick={handleCanvasDoubleClick}
-              onPointerDown={(event) => {
-                if (event.target === event.currentTarget) setSelectedCueId(null);
-              }}
+              onPointerDown={startCreateDrag}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
             >
               {/* lane backgrounds */}
               {model.tracks.map((track) => (
                 <div
                   key={track.key}
+                  data-lane={track.key}
                   className={style.lane}
                   style={place(
                     mainOffset,
@@ -523,16 +592,26 @@ export default function CueTimeline({ orientation, onOrientationChange, readOnly
               </svg>
 
               {/* cues */}
-              {Object.keys(cues).map((cueId) => {
+              {Object.keys(displayedCues).map((cueId) => {
                 const box = getCueBox(cueId);
                 if (!box) return null;
-                const { cue } = box;
+                const { cue, isOneShot } = box;
                 const isSelected = cueId === selectedCueId;
-                const isDragged = drag?.target === 'cue' && drag.id === cueId;
+                const isDragged = (drag?.target === 'cue' && drag.id === cueId) || !cues[cueId];
+                const entry = live.entries[cueId];
+                const hasPlayed = entry !== undefined && entry.status !== 'test';
                 return (
                   <div
                     key={cueId}
-                    className={cx([style.cue, isSelected && style.selected, isDragged && style.dragging])}
+                    className={cx([
+                      style.cue,
+                      isSelected && style.selected,
+                      isDragged && style.dragging,
+                      isOneShot && style.oneShot,
+                      (entry?.status === 'running' || entry?.status === 'test') && style.running,
+                      entry?.status === 'done' && style.done,
+                      cueId === live.nextCueId && style.nextCue,
+                    ])}
                     style={
                       {
                         ...place(box.main, box.mainSize, box.cross + 2, row - 4),
@@ -547,22 +626,52 @@ export default function CueTimeline({ orientation, onOrientationChange, readOnly
                     data-testid='timeline-cue'
                   >
                     {cue.start.trigger === 'auto-continue' && <LuLink2 className={style.linkIcon} />}
+                    {cues[cueId] && (isRunMode ? isLoaded : box.mainSize >= 64 || isSelected) && (
+                      <button
+                        type='button'
+                        className={cx([style.cueAction, isRunMode && !hasPlayed && style.cueGo])}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onDoubleClick={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!isRunMode) setCuePlayback.test(cueId);
+                          else if (hasPlayed) setCuePlayback.rearm(cueId);
+                          else setCuePlayback.go(cueId);
+                        }}
+                        data-testid='cue-action'
+                      >
+                        {!isRunMode ? 'Test' : hasPlayed ? 'Rearm' : 'GO'}
+                      </button>
+                    )}
                     <span className={style.cueLabel}>{cue.label}</span>
-                    <span
-                      className={cx([style.handle, style.handleStart])}
-                      onPointerDown={(e) => startCueDrag(e, cue, 'start')}
-                      onPointerMove={handlePointerMove}
-                      onPointerUp={handlePointerUp}
-                    />
-                    <span
-                      className={cx([style.handle, style.handleEnd])}
-                      onPointerDown={(e) => startCueDrag(e, cue, 'end')}
-                      onPointerMove={handlePointerMove}
-                      onPointerUp={handlePointerUp}
-                    />
+                    {!readOnly && (
+                      <span
+                        className={cx([style.handle, style.handleStart])}
+                        onPointerDown={(e) => startCueDrag(e, cue, 'start')}
+                        onPointerMove={handlePointerMove}
+                        onPointerUp={handlePointerUp}
+                      />
+                    )}
+                    {!readOnly && !isOneShot && (
+                      <span
+                        className={cx([style.handle, style.handleEnd])}
+                        onPointerDown={(e) => startCueDrag(e, cue, 'end')}
+                        onPointerMove={handlePointerMove}
+                        onPointerUp={handlePointerUp}
+                      />
+                    )}
                   </div>
                 );
               })}
+
+              {/* where the show is on the plan */}
+              {live.planPosition !== null && (
+                <div
+                  className={style.playhead}
+                  style={place(toMain(live.planPosition) - 1, 2, crossOffset, crossLength - crossOffset)}
+                  data-testid='timeline-playhead'
+                />
+              )}
 
               {/* ruler, kept in view while scrolling */}
               <div
@@ -574,6 +683,20 @@ export default function CueTimeline({ orientation, onOrientationChange, readOnly
                     : { left: 0, top: 0, height: mainLength, width: crossOffset }
                 }
               >
+                {/* the delay between the plan and the clock, and the clock itself */}
+                {live.planPosition !== null && live.delay !== 0 && (
+                  <div
+                    className={cx([style.delayBand, live.delay < 0 && style.ahead])}
+                    style={place(
+                      toMain(Math.min(live.planPosition, live.now)),
+                      Math.abs(live.delay) * pxPerMs,
+                      0,
+                      crossOffset,
+                    )}
+                    title={`${live.delay > 0 ? 'Behind' : 'Ahead'} ${millisToString(Math.abs(live.delay))}`}
+                  />
+                )}
+                {isLoaded && <div className={style.realtime} style={place(toMain(live.now), 0, 0, crossOffset)} />}
                 {marks.map((time) => (
                   <span
                     key={time}
@@ -616,7 +739,7 @@ export default function CueTimeline({ orientation, onOrientationChange, readOnly
             </div>
           )}
         </div>
-        {selectedCue && !readOnly && (
+        {selectedCue && !readOnly && cues[selectedCue.id] && (
           <CueInspector
             key={selectedCue.id}
             cue={selectedCue}

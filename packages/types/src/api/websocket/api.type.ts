@@ -176,6 +176,15 @@ export type OffsetmodeResponse = {
   payload: 'success';
 };
 
+export type CueAction = {
+  tag: 'cue';
+  payload: 'next' | 'rearm-all' | { go: string } | { rearm: string } | { test: string };
+};
+export type CueResponse = {
+  tag: 'cue';
+  payload: 'success';
+};
+
 export type ApiAction =
   | VersionAction
   | PollAction
@@ -191,7 +200,8 @@ export type ApiAction =
   | AuxtimerAction
   | ClientAction
   | OffsetmodeAction
-  | TeleprompterAction;
+  | TeleprompterAction
+  | CueAction;
 
 export type ApiResponse =
   | VersionResponse
@@ -208,6 +218,7 @@ export type ApiResponse =
   | AuxtimerResponse
   | ClientResponse
   | OffsetmodeResponse
-  | TeleprompterResponse;
+  | TeleprompterResponse
+  | CueResponse;
 
 export type ApiActionTag = ApiAction['tag'];

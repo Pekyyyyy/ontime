@@ -43,6 +43,8 @@ function makeCue(patch: Partial<TimelineCue> & Pick<TimelineCue, 'id'>): Timelin
     colour: '',
     start: { trigger: 'event-go', eventId: 'a' },
     end: { trigger: 'duration', duration: 1000 },
+    goMode: 'auto',
+    followsDelay: true,
     ...patch,
   };
 }
@@ -127,6 +129,8 @@ describe('parseTimelineCues()', () => {
         colour: '',
         start: { trigger: 'event-go', eventId: 'a' },
         end: { trigger: 'duration', duration: 0 },
+        goMode: 'auto',
+        followsDelay: true,
       },
     });
     expect(errors).toHaveLength(2);

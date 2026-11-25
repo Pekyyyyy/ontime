@@ -27,6 +27,13 @@ export type TimelineCueEnd =
   | { trigger: 'event-go'; eventId: EntryId }
   | { trigger: 'inside-event'; eventId: EntryId; offset: number };
 
+/**
+ * How a cue starts once its time comes
+ * - auto: the cue fires by itself
+ * - manual: the cue waits for an operator GO, its time is a guide
+ */
+export type TimelineCueGoMode = 'auto' | 'manual';
+
 export type TimelineCueStartTrigger = TimelineCueStart['trigger'];
 export type TimelineCueEndTrigger = TimelineCueEnd['trigger'];
 
@@ -43,7 +50,11 @@ export type TimelineCue = {
   /** an empty string uses the colour of the custom field */
   colour: string;
   start: TimelineCueStart;
+  /** a cue which ends with a duration of 0 is a one-shot: a single GO and nothing to stop */
   end: TimelineCueEnd;
+  goMode: TimelineCueGoMode;
+  /** whether the time of the cue moves with the running delay of the show, or stays at the planned time */
+  followsDelay: boolean;
 };
 
 export type RundownCues = Record<TimelineCueId, TimelineCue>;

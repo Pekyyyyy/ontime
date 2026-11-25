@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import useRundown from '../../../common/hooks-query/useRundown';
 import CueTimeline from '../../cue-timeline/CueTimeline';
 import { useCueTimelinePanel } from '../../cue-timeline/useCueTimelinePanel';
+import { useEditorFollowMode } from '../useEditorFollowMode';
 import { useEventSelection } from '../useEventSelection';
 import EventEditorFooter from './composite/EventEditorFooter';
 import { getEditTarget } from './entryEditor.utils';
@@ -19,6 +20,7 @@ export default function RundownEntryEditor() {
   const cursor = useEventSelection((state) => state.cursor);
   const { data } = useRundown();
   const { orientation, setOrientation } = useCueTimelinePanel('editor', 'vertical');
+  const { editorMode } = useEditorFollowMode();
 
   const entry = useMemo<OntimeEntry | null>(() => {
     if (data.order.length === 0) {
@@ -31,7 +33,7 @@ export default function RundownEntryEditor() {
   if (!entry) {
     // with nothing selected, the side panel edits the cues of the rundown
     if (data.order.length === 0) return <EventEditorEmpty />;
-    return <CueTimeline orientation={orientation} onOrientationChange={setOrientation} />;
+    return <CueTimeline orientation={orientation} onOrientationChange={setOrientation} mode={editorMode} />;
   }
 
   if (isOntimeEvent(entry)) {
