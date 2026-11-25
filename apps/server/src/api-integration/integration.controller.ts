@@ -17,6 +17,7 @@ import { getCurrentRundown, getProjectCustomFields } from '../api-data/rundown/r
 import { editEntry } from '../api-data/rundown/rundown.service.js';
 import { ONTIME_VERSION } from '../ONTIME_VERSION.js';
 import { auxTimerService } from '../services/aux-timer-service/auxTimer.service.js';
+import { cueService } from '../services/cue-service/cue.service.js';
 import * as messageService from '../services/message-service/message.service.js';
 import { validateMessage, validateTimerMessage } from '../services/message-service/message.utils.js';
 import { runtimeService } from '../services/runtime-service/runtime.service.js';
@@ -40,6 +41,7 @@ const attributedActions = new Set<ApiActionTag>([
   'addtime',
   'auxtimer',
   'offsetmode',
+  'cue',
 ]);
 
 /**
@@ -154,6 +156,8 @@ const actionHandlers: Record<ApiActionTag, ActionHandler> = {
     }
 
     if (payload === 'next') {
+      // the cues of the running event play before the show moves on
+      if (cueService.goNextInEvent()) return { payload: 'success' };
       return successPayloadOrError(runtimeService.startNext(), 'Unable to start next event');
     }
 
@@ -323,6 +327,28 @@ const actionHandlers: Record<ApiActionTag, ActionHandler> = {
   offsetmode: (payload) => {
     const mode = coerceEnum<OffsetMode>(payload, OffsetMode);
     runtimeService.setOffsetMode(mode);
+    return { payload: 'success' };
+  },
+  /* Timeline cues */
+  cue: (payload) => {
+    if (payload === 'next') {
+      cueService.goNext();
+      return { payload: 'success' };
+    }
+    if (payload === 'panic') {
+      cueService.panic();
+      return { payload: 'success' };
+    }
+    if (payload === 'rearm-all') {
+      cueService.rearmAll();
+      return { payload: 'success' };
+    }
+    assert.isObject(payload);
+    const command = payload as Record<string, unknown>;
+    if (typeof command.go === 'string') cueService.go(command.go);
+    else if (typeof command.rearm === 'string') cueService.rearm(command.rearm);
+    else if (typeof command.test === 'string') cueService.test(command.test);
+    else throw new Error('Cue command must be next, panic, rearm-all, or one of go, rearm or test with a cue id');
     return { payload: 'success' };
   },
   /* Teleprompter */

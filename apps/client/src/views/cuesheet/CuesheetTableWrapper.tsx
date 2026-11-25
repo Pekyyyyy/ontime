@@ -78,7 +78,7 @@ function CuesheetTableWrapper({
           <CueTimeline
             orientation={timelinePanel.orientation}
             onOrientationChange={timelinePanel.setOrientation}
-            readOnly={cuesheetMode === AppMode.Run}
+            mode={cuesheetMode}
           />
         </div>
       )}

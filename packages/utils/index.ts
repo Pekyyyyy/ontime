@@ -55,6 +55,21 @@ export {
   type TimelineCueLayout,
   type TimelineEventSpan,
 } from './src/timeline-cues/timelineCues.js';
+export {
+  cueFireGrace,
+  fireCueEntry,
+  getCueSchedule,
+  getDueCues,
+  getEventGoCues,
+  getNextCue,
+  getNextCueInEvent,
+  isChainedCue,
+  isOneShotCue,
+  panicCuePlayback,
+  settleCuePlayback,
+  type CueSchedule,
+  type CueScheduleEntry,
+} from './src/timeline-cues/cuePlayback.js';
 
 // time format utils
 export {

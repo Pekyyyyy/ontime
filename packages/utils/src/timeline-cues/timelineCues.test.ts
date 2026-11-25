@@ -31,6 +31,8 @@ function makeCue(patch: Partial<TimelineCue> & Pick<TimelineCue, 'id'>): Timelin
     colour: '',
     start: { trigger: 'event-go', eventId: 'e1' },
     end: { trigger: 'duration', duration: 50 },
+    goMode: 'auto',
+    followsDelay: true,
     ...patch,
   };
 }
@@ -215,6 +217,20 @@ describe('layoutTimelineCues()', () => {
     expect(layoutTimelineCues(cues, resolved, ['camera', 'light'])).toEqual({
       rows: { a: 0, b: 1, c: 0, d: 0 },
       rowCount: { camera: 2, light: 1 },
+    });
+  });
+});
+
+describe('sanitiseTimelineCues() with one-shot cues', () => {
+  it('turns an auto-continue from a one-shot cue into an auto-follow', () => {
+    const cues = toCues(
+      makeCue({ id: 'shot', end: { trigger: 'duration', duration: 0 } }),
+      makeCue({ id: 'b', start: { trigger: 'auto-continue', cueId: 'shot', offset: 20 } }),
+    );
+    expect(sanitiseTimelineCues(cues, spans, customFields).b.start).toEqual({
+      trigger: 'auto-follow',
+      cueId: 'shot',
+      offset: 20,
     });
   });
 });

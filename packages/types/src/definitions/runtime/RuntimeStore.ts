@@ -91,5 +91,6 @@ export const runtimeStorePlaceholder: Readonly<RuntimeStore> = {
     until: 0,
     at: 0,
   },
+  cuePlayback: { rundownId: null, cues: {} },
   ping: 1,
 };

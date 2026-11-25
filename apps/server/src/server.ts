@@ -34,6 +34,7 @@ import { clearUploadfolder } from './middleware/upload.js';
 import { ONTIME_VERSION } from './ONTIME_VERSION.js';
 import { endSession, getShowWelcomeDialog, startSession } from './services/app-state-service/appState.service.js';
 import { auxTimerService } from './services/aux-timer-service/auxTimer.service.js';
+import { initCueService } from './services/cue-service/cue.service.js';
 import * as messageService from './services/message-service/message.service.js';
 import { initialiseProject } from './services/project-service/project.service.js';
 import { restoreService } from './services/restore-service/restore.service.js';
@@ -268,6 +269,7 @@ export const startServer = async (): Promise<{ message: string; serverPort: numb
     },
     teleprompter: getTeleprompterState(),
     teleprompterSync: getTeleprompterSync(),
+    cuePlayback: { rundownId: null, cues: {} },
     ping: 1,
   });
 
@@ -280,6 +282,7 @@ export const startServer = async (): Promise<{ message: string; serverPort: numb
   // apply the restore point if it exists
   runtimeService.init(restored?.runtime ?? null);
   initTeleprompter();
+  initCueService();
 
   if (restored?.auxTimers) {
     auxTimerService.resume(restored.auxTimers);

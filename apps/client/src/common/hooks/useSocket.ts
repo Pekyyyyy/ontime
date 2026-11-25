@@ -303,3 +303,25 @@ export const useStudioTimersSocket = createSelector((state: RuntimeStore) => ({
   rundown: state.rundown,
   expectedRundownEnd: state.offset.expectedRundownEnd,
 }));
+
+/* ======================= Timeline cues ======================= */
+
+export const useCuePlayback = createSelector((state: RuntimeStore) => state.cuePlayback);
+
+/** What the cue timeline needs to place the show on the plan */
+export const useCueRuntimeData = createSelector((state: RuntimeStore) => ({
+  delay: state.offset.mode === OffsetMode.Absolute ? state.offset.absolute : state.offset.relative,
+  currentDay: state.rundown.currentDay ?? 0,
+  playback: state.timer.playback,
+  eventNowId: state.eventNow?.id ?? null,
+  expectedFinish: state.timer.expectedFinish,
+}));
+
+export const setCuePlayback = {
+  go: (cueId: string) => sendSocket('cue', { go: cueId }),
+  rearm: (cueId: string) => sendSocket('cue', { rearm: cueId }),
+  test: (cueId: string) => sendSocket('cue', { test: cueId }),
+  next: () => sendSocket('cue', 'next'),
+  rearmAll: () => sendSocket('cue', 'rearm-all'),
+  panic: () => sendSocket('cue', 'panic'),
+};

@@ -1,7 +1,15 @@
 import type { CustomFields, RundownCues, TimelineCue } from 'ontime-types';
 import { resolveTimelineCues } from 'ontime-utils';
 
-import { dragCue, dragEvent, makeCueAt, makeTimelineModelFromSpans, removeCue, snapToGrid } from '../cueTimeline.utils';
+import {
+  dragCue,
+  dragEvent,
+  makeCueAt,
+  makeCueBetween,
+  makeTimelineModelFromSpans,
+  removeCue,
+  snapToGrid,
+} from '../cueTimeline.utils';
 
 const spans = [
   { id: 'e1', start: 600_000, end: 1_200_000 },
@@ -22,6 +30,8 @@ function makeCue(patch: Partial<TimelineCue> & Pick<TimelineCue, 'id'>): Timelin
     colour: '',
     start: { trigger: 'event-go', eventId: 'e1' },
     end: { trigger: 'duration', duration: 60_000 },
+    goMode: 'auto',
+    followsDelay: true,
     ...patch,
   };
 }
@@ -118,5 +128,24 @@ describe('snapToGrid()', () => {
     expect(snapToGrid(1_499, 1000)).toBe(1000);
     expect(snapToGrid(1_500, 1000)).toBe(2000);
     expect(snapToGrid(1_234, 0)).toBe(1_234);
+  });
+});
+
+describe('makeCueBetween()', () => {
+  it('starts with the event at its start and lasts as long as it was drawn', () => {
+    const cue = makeCueBetween('camera', 600_000, 900_000, spans, 0);
+    expect(cue?.start).toEqual({ trigger: 'event-go', eventId: 'e1' });
+    expect(cue?.end).toEqual({ trigger: 'duration', duration: 300_000 });
+    expect(cue?.goMode).toBe('auto');
+  });
+
+  it('starts inside an event when drawn after its GO', () => {
+    const cue = makeCueBetween('camera', 700_000, 1_300_000, spans, 0);
+    expect(cue?.start).toEqual({ trigger: 'inside-event', eventId: 'e1', offset: 100_000 });
+    expect(cue?.end).toEqual({ trigger: 'duration', duration: 600_000 });
+  });
+
+  it('ignores a click without a drag', () => {
+    expect(makeCueBetween('camera', 700_000, 700_200, spans, 0)).toBeNull();
   });
 });

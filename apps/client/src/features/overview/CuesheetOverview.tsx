@@ -1,6 +1,7 @@
 import { PropsWithChildren, memo } from 'react';
 
 import { useIsMobileScreen } from '../../common/hooks/useIsMobileScreen';
+import { CueOverview } from './composite/CueOverview';
 import {
   ClockOverview,
   MetadataTimes,
@@ -37,6 +38,7 @@ function CuesheetDesktop({ children }: PropsWithChildren) {
       <StartTimesRuntime shouldFormat />
       <TimerOverview />
       <OffsetOverview />
+      <CueOverview />
       <MetadataTimes />
       <ClockOverview shouldFormat />
     </OverviewWrapper>

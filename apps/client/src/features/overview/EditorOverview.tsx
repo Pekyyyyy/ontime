@@ -1,6 +1,7 @@
 import { PropsWithChildren, memo } from 'react';
 
 import { EditorLayoutMode, useEditorLayout } from '../../views/editor/useEditorLayout';
+import { CueOverview } from './composite/CueOverview';
 import {
   ClockOverview,
   MetadataTimes,
@@ -50,6 +51,7 @@ function OverviewTracking() {
         <ProgressOverview />
         <OffsetOverview />
       </div>
+      <CueOverview />
       <MetadataTimes />
       <ClockOverview shouldFormat />
     </>
@@ -65,6 +67,7 @@ function OverviewControl() {
         <ProgressOverview />
         <OffsetOverview />
       </div>
+      <CueOverview />
       <MetadataTimes />
       <ClockOverview shouldFormat />
     </>

@@ -347,3 +347,157 @@
   flex-wrap: wrap;
   gap: 0.25rem;
 }
+
+// #region live show
+.playhead {
+  z-index: 7;
+  background-color: $red-500;
+  box-shadow: 0 0 4px rgba($red-500, 0.6);
+  pointer-events: none;
+}
+
+.realtime {
+  z-index: 2;
+  pointer-events: none;
+  border-left: 2px dashed $red-300;
+
+  .vertical & {
+    border-left: none;
+    border-top: 2px dashed $red-300;
+  }
+}
+
+.delayBand {
+  z-index: 1;
+  pointer-events: none;
+  background-color: rgba($red-500, 0.5);
+
+  &.ahead {
+    background-color: rgba(#4fbf6a, 0.5);
+  }
+}
+
+.running {
+  box-shadow: 0 0 0 2px $red-500;
+  background-color: color-mix(in srgb, var(--cue-colour) 80%, $gray-1100);
+}
+
+.done {
+  opacity: 0.45;
+}
+
+.nextCue {
+  box-shadow: 0 0 0 2px $ui-white;
+}
+
+.oneShot {
+  // a cue with no end washes out, its name stays readable
+  border-color: transparent;
+  border-left-color: var(--cue-colour);
+  overflow: visible;
+  background: linear-gradient(
+    to right,
+    var(--cue-colour),
+    color-mix(in srgb, var(--cue-colour) 45%, transparent) 50%,
+    transparent
+  );
+
+  .vertical & {
+    border-left-color: transparent;
+    border-top-color: var(--cue-colour);
+    background: linear-gradient(
+      to bottom,
+      var(--cue-colour),
+      color-mix(in srgb, var(--cue-colour) 45%, transparent) 50%,
+      transparent
+    );
+  }
+
+  &.selected {
+    outline-style: dashed;
+  }
+
+  .cueLabel {
+    overflow: visible;
+    text-overflow: clip;
+    text-shadow: 0 0 3px $gray-1100;
+  }
+}
+
+.cueAction {
+  flex-shrink: 0;
+  z-index: 2;
+  margin: 0 0.25rem 0 0.125rem;
+  padding: 0 0.375rem;
+  height: 1.125rem;
+  border: 1px solid $white-40;
+  border-radius: 2px;
+  background-color: $gray-1100;
+  color: $ui-white;
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover {
+    background-color: $gray-1000;
+  }
+
+  .vertical & {
+    margin: 0.25rem 0.125rem;
+  }
+}
+
+.cueGo {
+  background-color: $red-700;
+  border-color: $red-500;
+
+  &:hover {
+    background-color: $red-600;
+  }
+}
+// #endregion live show
+
+.checkField {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: $label-gray;
+}
+
+.lockToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+
+  &.locked {
+    color: $white-40;
+  }
+}
+
+.panic {
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.stopped {
+  background-image: repeating-linear-gradient(-45deg, transparent 0 6px, rgba($red-500, 0.35) 6px 8px);
+}
+
+.nextEventIcon {
+  flex-shrink: 0;
+  margin-left: auto;
+  margin-right: 0.375rem;
+  pointer-events: none;
+
+  .vertical & {
+    margin: 0.25rem 0.25rem 0 auto;
+  }
+}

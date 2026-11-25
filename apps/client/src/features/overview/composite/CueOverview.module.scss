@@ -1,0 +1,9 @@
+.nextCue {
+  max-width: 9rem;
+
+  > span:first-child {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
