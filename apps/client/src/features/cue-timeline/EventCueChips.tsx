@@ -30,6 +30,7 @@ export default function EventCueChips({ eventId, track, hideTrack, inCell, class
   const { data: customFields } = useCustomFields();
   const selectedCueId = useCueSelection((state) => state.selectedCueId);
   const setSelectedCueId = useCueSelection((state) => state.setSelectedCueId);
+  const openCue = useCueSelection((state) => state.openCue);
 
   const byEvent = getCuesByEvent(rundown);
   const items = track ? getEventCuesOnTrack(byEvent, eventId, track) : (byEvent[eventId] ?? []);
@@ -54,6 +55,10 @@ export default function EventCueChips({ eventId, track, hideTrack, inCell, class
             style={{ '--cue-colour': colour } as CSSProperties}
             title={`${customFields[cue.track]?.label ?? cue.track}: ${cue.label}${cue.note ? `\n${cue.note}` : ''}`}
             onClick={(event) => select(event, cue.id)}
+            onDoubleClick={(event) => {
+              event.stopPropagation();
+              openCue(cue.id);
+            }}
             onMouseDown={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
           >

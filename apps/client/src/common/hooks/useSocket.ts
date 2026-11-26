@@ -310,7 +310,8 @@ export const useCuePlayback = createSelector((state: RuntimeStore) => state.cueP
 
 /** What the cue timeline needs to place the show on the plan */
 export const useCueRuntimeData = createSelector((state: RuntimeStore) => ({
-  delay: state.offset.mode === OffsetMode.Absolute ? state.offset.absolute : state.offset.relative,
+  // cues sit on the planned times of day, so they follow how far the show is from the plan, whatever the offset mode shows
+  delay: state.offset.absolute,
   currentDay: state.rundown.currentDay ?? 0,
   playback: state.timer.playback,
   eventNowId: state.eventNow?.id ?? null,
